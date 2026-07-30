@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Slumber — v12: Plum Velvet</title>
+<style>
+:root {
+  --bg: #110a10; --bg2: #1a1018;
+  --text: #ece0e8; --text2: #a890a0; --text3: #685068;
+  --accent: #b8889e; --accent2: #9e7090; --accent-glow: rgba(184,136,158,.14);
+  --accent-subtle: rgba(184,136,158,.07); --card-bg: rgba(26,15,24,.7);
+  --card-border: rgba(184,136,158,.08);
+  --radius:16px;--radius-sm:12px;--radius-pill:22px;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;--topbar-h:54px;--nav-h:66px;--touch-min:44px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:#0a060a;color:var(--text);-webkit-font-smoothing:antialiased}
+body{display:flex;justify-content:center;align-items:center}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 40% 40% at 60% 20%,rgba(160,100,130,.04),transparent 60%),radial-gradient(ellipse 30% 30% at 30% 80%,rgba(140,100,120,.03),transparent 55%)}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:28px;position:relative;overflow:hidden;z-index:1;box-shadow:0 0 0 1px rgba(184,136,158,.04),0 20px 60px rgba(0,0,0,.55)}
+.topbar{position:absolute;top:0;left:0;right:0;height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:100;background:rgba(17,10,16,.75);backdrop-filter:blur(20px);border-bottom:1px solid rgba(184,136,158,.06)}
+.topbar .logo{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.5px}
+.topbar .logo span{color:var(--accent)}
+.topbar .icon-btn{width:var(--touch-min);height:var(--touch-min);display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--text2);transition:all .3s}
+.topbar .icon-btn:hover{background:var(--accent-subtle)}
+.topbar .icon-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bottomnav{position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);display:flex;align-items:flex-start;justify-content:space-around;background:rgba(17,10,16,.75);backdrop-filter:blur(20px);z-index:100;border-top:1px solid rgba(184,136,158,.06);padding-top:8px}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text3);transition:all .25s;font-size:10px;padding:4px 0 8px;min-width:60px;position:relative}
+.nav-item::after{content:'';width:20px;height:3px;border-radius:3px;background:transparent;position:absolute;bottom:0;transition:all .25s}
+.nav-item.active{color:var(--accent);font-weight:600}
+.nav-item.active::after{background:var(--accent)}
+.nav-item svg{width:20px;height:20px;opacity:.5;transition:all .25s}
+.nav-item.active svg{opacity:1}
+/* LARGER FAB with soft plum glow */
+.fab{position:absolute;bottom:calc(var(--nav-h) + 20px);right:22px;width:60px;height:60px;border-radius:50%;background:rgba(184,136,158,.2);backdrop-filter:blur(14px);border:2px solid rgba(184,136,158,.25);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:120;transition:all .3s;box-shadow:0 4px 32px rgba(184,136,158,.12)}
+.fab:active{transform:scale(.86);background:rgba(184,136,158,.35)}
+.fab svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.fab-label{position:absolute;right:68px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--accent);white-space:nowrap;opacity:.8;pointer-events:none}
+.page{display:none;padding:18px 20px 30px;min-height:100%;position:relative;z-index:2}
+.page.active{display:block}
+/* EDITORIAL card — wider spacing, serif-like hierarchy */
+.editorial-card{background:var(--card-bg);backdrop-filter:blur(12px);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px 18px;margin-bottom:16px;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.editorial-card .ed-kicker{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:var(--text3);margin-bottom:12px}
+.editorial-card .ed-headline{font-size:36px;font-weight:200;letter-spacing:-1.5px;line-height:1.05;margin-bottom:6px}
+.editorial-card .ed-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-top:8px}
+.editorial-card .ed-stat-row{display:flex;gap:24px;margin-top:12px;padding-top:12px;border-top:1px solid var(--card-border)}
+.editorial-card .ed-stat{text-align:center;flex:1}
+.editorial-card .ed-stat .num{font-size:24px;font-weight:300;letter-spacing:-1px}
+.editorial-card .ed-stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-top:2px}
+
+.btn-pill{display:inline-flex;align-items:center;justify-content:center;padding:11px 20px;border-radius:var(--radius-pill);font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;font-family:var(--font);min-height:var(--touch-min);border:1.5px solid rgba(184,136,158,.15);background:rgba(184,136,158,.08);color:var(--accent)}
+.btn-pill:active{background:rgba(184,136,158,.18);transform:scale(.97)}
+.btn-pill.primary{background:rgba(184,136,158,.15);border:1.5px solid rgba(184,136,158,.25);color:#e0c8d8}
+.btn-pill.ghost{background:transparent;border:1.5px solid rgba(255,255,255,.06);color:var(--text2)}
+.btn-full{width:100%;justify-content:center;margin-bottom:8px}
+/* ONBOARDING */
+.page#onboarding{padding-top:64px}
+#onboarding.active~.topbar,#onboarding.active~.bottomnav,#onboarding.active~.fab{display:none}
+#onboarding.active~.topbar{display:flex;background:transparent;border:none;backdrop-filter:none}
+#onboarding.active~.topbar .logo,#onboarding.active~.topbar .icon-btn{opacity:0}
+.onboard-step{display:none;animation:fadeUp .4s ease}
+.onboard-step.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.ob-kicker{font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--text3);margin-bottom:20px}
+.ob-title{font-size:26px;font-weight:700;line-height:1.3;margin-bottom:12px}
+.ob-sub{color:var(--text2);font-size:15px;line-height:1.5;margin-bottom:28px}
+.ob-line{width:36px;height:2px;background:var(--accent2);margin-bottom:28px;opacity:.4;border-radius:2px}
+.ob-dots{display:flex;gap:8px;justify-content:center;margin-top:32px}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.05);transition:all .3s}
+.ob-dot.active{background:var(--accent);width:22px;border-radius:4px}
+.sleep-target{display:flex;gap:14px;justify-content:center;margin:20px 0 28px}
+.st-option{width:58px;height:58px;border-radius:50%;background:var(--card-bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .3s}
+.st-option.active{border-color:var(--accent);color:var(--accent);background:rgba(184,136,158,.06);box-shadow:0 0 14px var(--accent-glow)}
+.schedule-type{display:flex;flex-direction:column;gap:8px;margin:16px 0 28px}
+.st-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--card-bg);border:1px solid var(--card-border);cursor:pointer;transition:all .3s}
+.st-row.active{border-color:var(--accent);background:rgba(184,136,158,.04)}.st-row .st-icon{font-size:26px;opacity:.7}.st-row .st-label{font-weight:600;font-size:14px}.st-row .st-desc{font-size:11px;color:var(--text2)}
+
+/* DASHBOARD — editorial magazine layout */
+.dash-hero{margin-bottom:16px}
+.dump-pill{display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1px solid rgba(184,136,158,.12);border-radius:var(--radius-pill);padding:6px 6px 6px 18px;margin-bottom:14px}
+.dump-pill:focus-within{border-color:var(--accent)}
+.dump-pill input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;font-family:var(--font)}
+.dump-pill input::placeholder{color:var(--text3)}
+.dump-pill .send-pill{width:38px;height:38px;border-radius:50%;background:rgba(184,136,158,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);transition:all .3s;flex-shrink:0}
+.dump-pill .send-pill svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+.checkpoint-row{display:flex;gap:10px;margin-bottom:14px}
+.cp-card{flex:1;padding:18px 12px;border-radius:var(--radius);text-align:center;cursor:pointer;font-weight:600;font-size:14px;transition:all .3s;min-height:var(--touch-min);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card-bg);border:1.5px solid var(--card-border)}
+.cp-card.cp-wake{border-color:rgba(184,136,158,.2);color:var(--accent);background:rgba(184,136,158,.06)}
+.cp-card.cp-sleep{border-color:rgba(140,120,160,.12);color:#b8a8c8}
+.cp-card:active{transform:scale(.95)}
+.cp-sub{font-size:10px;opacity:.5;font-weight:400;margin-top:3px}
+
+.trend-bars{display:flex;align-items:flex-end;gap:5px;height:40px;padding:0 8px}
+.trend-bars .tb{flex:1;background:rgba(184,136,158,.1);border-radius:6px 6px 0 0;min-height:4px}
+.trend-bars .tb.today{background:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
+.trend-labels{display:flex;gap:5px;padding:0 8px;margin-top:4px}
+.trend-labels span{flex:1;text-align:center;font-size:9px;color:var(--text3)}
+
+/* BRAIN DUMP — keep chat style */
+.dump-chat-area{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:340px;overflow-y:auto}
+.dump-bubble{max-width:85%;padding:12px 16px;border-radius:var(--radius);font-size:14px;line-height:1.5}
+.dump-bubble.mine{align-self:flex-end;background:rgba(184,136,158,.08);border:1px solid rgba(184,136,158,.12);border-bottom-right-radius:6px;color:var(--text)}
+.dump-bubble.ai{align-self:flex-start;background:var(--card-bg);border:1px solid var(--card-border);border-bottom-left-radius:6px;color:var(--text2)}
+.dump-bubble .bubble-time{font-size:9px;color:var(--text3);margin-top:4px;text-align:right}
+.dump-bubble.ai .bubble-time{text-align:left}
+.dump-input-bar{display:flex;gap:8px;align-items:center;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-pill);padding:4px 4px 4px 16px}
+.dump-input-bar textarea{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;font-family:var(--font);resize:none;padding:8px 0;line-height:1.5;min-height:20px;max-height:60px}
+.dump-input-bar textarea::placeholder{color:var(--text3)}
+.dump-input-bar .send-round{width:40px;height:40px;min-width:40px;border-radius:50%;background:rgba(184,136,158,.14);border:1px solid rgba(184,136,158,.18);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent)}
+.dump-input-bar .send-round:active{background:rgba(184,136,158,.25)}
+.dump-input-bar .send-round svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+.dump-mode-row{display:flex;gap:8px;margin-bottom:12px}
+.dump-mode-chip{padding:8px 16px;border-radius:var(--radius-pill);font-size:12px;cursor:pointer;color:var(--text2);background:var(--card-bg);border:1px solid var(--card-border);transition:all .3s;min-height:36px;display:flex;align-items:center;gap:4px}
+.dump-mode-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accent-subtle)}
+.dump-mode-chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tag-chip{font-size:11px;padding:6px 14px;border-radius:var(--radius-pill);color:var(--text2);cursor:pointer;background:var(--card-bg);border:1px solid var(--card-border);transition:all .3s;min-height:32px;display:flex;align-items:center}
+.tag-chip.active,.tag-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(184,136,158,.04)}
+.dump-to-wd{text-align:center;padding:14px;color:var(--accent);font-size:13px;cursor:pointer;border-radius:var(--radius-pill);background:var(--card-bg);border:1px solid var(--card-border);min-height:var(--touch-min);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:500;margin-bottom:14px}
+/* SLEEP */
+.sleep-pills{display:flex;gap:10px;margin-bottom:20px}
+.sleep-pill-btn{flex:1;padding:18px 12px;border-radius:var(--radius-pill);text-align:center;cursor:pointer;font-weight:600;font-size:14px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card-bg);border:1.5px solid var(--card-border)}
+.sp-wake{border-color:rgba(184,136,158,.2);color:var(--accent);background:rgba(184,136,158,.06)}
+.sp-bed{border-color:rgba(140,120,160,.1);color:#b8a8c8}
+.sleep-pill-btn:active{transform:scale(.94)}.sp-sub{font-size:10px;opacity:.5;font-weight:400;margin-top:2px}
+.awake-alert{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-pill);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)}
+.awake-alert .aw-link{color:var(--accent);cursor:pointer;font-weight:500;margin-left:auto}
+.timeline-diary{margin-bottom:16px}.timeline-diary h3{font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text2)}
+.tl-node{display:flex;gap:12px;margin-bottom:4px;position:relative}
+.tl-node::before{content:'';position:absolute;left:7px;top:24px;bottom:-4px;width:1px;background:rgba(184,136,158,.12)}
+.tl-node:last-child::before{display:none}
+.tl-dot{width:14px;height:14px;min-width:14px;border-radius:50%;background:var(--card-bg);border:2px solid var(--accent);margin-top:4px}
+.tl-dot.active{background:var(--accent)}
+.tl-node-content{flex:1;padding:10px 14px;border-radius:var(--radius-sm);background:var(--card-bg);border:1px solid var(--card-border);font-size:13px;line-height:1.4;margin-bottom:8px}
+.tl-node-content .tl-time{font-size:11px;color:var(--text3);font-weight:600;margin-bottom:2px}
+.tl-node-content .tl-action{color:var(--text)}
+.ai-card{padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius)}
+.ai-card .ai-header{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)}.ai-card .ai-text{font-size:12px;color:var(--text2);line-height:1.6}
+/* WIND-DOWN */
+.wd-countdown{text-align:center;margin-bottom:24px}
+.wd-circle{width:150px;height:150px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;background:var(--card-bg);border:1px solid var(--card-border);box-shadow:0 0 40px rgba(184,136,158,.04)}
+.wd-circle-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1}
+.wd-circle-inner .big{font-size:52px;font-weight:200;letter-spacing:-2px}
+.wd-circle-inner .small{font-size:13px;color:var(--text2);font-weight:400;margin-top:4px}
+.wd-bar-row{display:flex;gap:5px;max-width:220px;margin:0 auto}
+.wd-bar{height:5px;flex:1;border-radius:3px;background:rgba(255,255,255,.03)}
+.wd-bar.done{background:rgba(184,136,158,.35)}.wd-bar.active{background:var(--accent);animation:pulse 2.5s infinite;box-shadow:0 0 8px var(--accent-glow)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.wd-labels{display:flex;justify-content:space-between;max-width:280px;margin:6px auto 0;font-size:10px;color:var(--text3)}
+.wd-review{margin-bottom:16px}.wd-review h3{font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text2)}
+.wd-review-item{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:6px;font-size:13px;display:flex;align-items:center;gap:10px;opacity:.7;line-height:1.4}
+.wd-review-item:hover{opacity:1;border-color:rgba(184,136,158,.15)}
+.wd-review-item .wri-icon{font-size:15px;min-width:20px}.wd-review-item .wri-text{flex:1}
+.wd-cog{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer}
+.wd-cog:hover{border-color:var(--accent)}.wd-cog .cog-icon{font-size:28px;margin-bottom:8px}.wd-cog .cog-title{font-size:15px;font-weight:600}.wd-cog .cog-desc{font-size:12px;color:var(--text2);margin-top:4px}
+/* SETTINGS */
+.settings-section{margin-bottom:28px}.settings-section h3{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-bottom:6px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(184,136,158,.04);min-height:var(--touch-min)}
+.setting-row .sr-label{font-size:14px}.setting-row .sr-value{font-size:13px;color:var(--text2)}
+.setting-row .sr-toggle{width:46px;height:28px;border-radius:14px;background:rgba(255,255,255,.04);position:relative;cursor:pointer;transition:all .3s}
+.setting-row .sr-toggle.on{background:rgba(184,136,158,.3)}
+.setting-row .sr-toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s}
+.setting-row .sr-toggle.on::after{transform:translateX(18px)}
+.lang-chips{display:flex;gap:8px;padding:4px 0}
+.lang-chip{padding:10px 18px;border-radius:var(--radius-pill);font-size:13px;cursor:pointer;color:var(--text2);background:var(--card-bg);border:1px solid var(--card-border);transition:all .3s;min-height:var(--touch-min);display:flex;align-items:center}
+.lang-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(184,136,158,.05)}
+</style>
+</head>
+<body>
+<div class="phone">
+<div class="page active" id="onboarding">
+<div class="onboard-step active" data-step="1">
+<div class="ob-kicker">01 · Sleep Well</div>
+<div class="ob-title">讓思緒沉澱<br>尋回安眠</div><div class="ob-line"></div>
+<div class="ob-sub">每晚臨瞓前，將腦入面嘅雜念寫低。釋放咗，先可以真正休息。</div>
+<button class="btn-pill primary btn-full" onclick="onboardNext()">開始了解</button>
+<div class="ob-dots"><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div></div>
+<div class="onboard-step" data-step="2">
+<div class="ob-kicker">02 · Your Goal</div><div class="ob-title">你嘅目標睡眠時長</div>
+<div class="ob-sub">香港人平均瞓 6.5 小時，但你值得更好。</div>
+<div class="sleep-target" id="sTs"><div class="st-option" data-h="6" onclick="selectSleep(this)">6</div><div class="st-option active" data-h="7" onclick="selectSleep(this)">7</div><div class="st-option" data-h="8" onclick="selectSleep(this)">8</div><div class="st-option" data-h="9" onclick="selectSleep(this)">9</div></div>
+<button class="btn-pill primary btn-full" onclick="onboardNext()">繼續</button>
+<div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div></div></div>
+<div class="onboard-step" data-step="3">
+<div class="ob-kicker">03 · Your Rhythm</div><div class="ob-title">你嘅作息模式</div>
+<div class="ob-sub">我哋會根據你嘅作息，提供最合適嘅建議。</div>
+<div class="schedule-type">
+<div class="st-row active" data-sched="fixed" onclick="selectSched(this)"><div class="st-icon">📌</div><div><div class="st-label">固定作息</div><div class="st-desc">每日相近嘅起身/瞓覺時間</div></div></div>
+<div class="st-row" data-sched="ot" onclick="selectSched(this)"><div class="st-icon">🌙</div><div><div class="st-label">OT 不定時</div><div class="st-desc">經常加班，作息時間浮動</div></div></div>
+<div class="st-row" data-sched="shift" onclick="selectSched(this)"><div class="st-icon">🔄</div><div><div class="st-label">輪班工作</div><div class="st-desc">日夜交替，週期性轉換</div></div></div></div>
+<button class="btn-pill primary btn-full" onclick="onboardNext()">繼續</button>
+<div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div></div></div>
+<div class="onboard-step" data-step="4">
+<div class="ob-kicker">04 · Ready</div><div class="ob-title">準備好開始未？</div>
+<div class="ob-sub">我哋會喺適當時候提醒你準備瞓覺同起身。</div>
+<button class="btn-pill primary btn-full" onclick="finishOnboard()">開啟通知，開始改善睡眠</button>
+<button class="btn-pill ghost btn-full" onclick="finishOnboard()">稍後設定</button>
+<div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div></div></div></div>
+
+<div class="page" id="dashboard">
+<div class="dash-hero">
+<div class="editorial-card">
+<div class="ed-kicker">今晚 · 睡眠目標</div>
+<div class="ed-headline">7h <span style="font-size:22px;font-weight:400">30m</span></div>
+<div class="ed-sub">建議 23:30 入睡 · 07:00 起身</div>
+<div class="ed-stat-row">
+<div class="ed-stat"><div class="num">78</div><div class="lbl">睡眠質素</div></div>
+<div class="ed-stat"><div class="num">5</div><div class="lbl">連續達標日</div></div>
+<div class="ed-stat"><div class="num">−25m</div><div class="lbl">入睡提早</div></div>
+</div></div></div>
+<div class="dump-pill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--text3)"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><input type="text" placeholder="將腦裡面嘅嘢寫低..."><div class="send-pill" onclick="navigate('brain-dump')"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div></div>
+<div class="checkpoint-row"><div class="cp-card cp-wake" onclick="navigate('sleep')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-bottom:4px"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2"/></svg>起身 Check-in<div class="cp-sub">記錄起床</div></div><div class="cp-card cp-sleep" onclick="navigate('sleep')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-bottom:4px"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>準備瞓覺<div class="cp-sub">睡前放鬆</div></div></div>
+<div class="editorial-card" style="padding:14px 18px"><div style="font-size:11px;font-weight:600;margin-bottom:10px;color:var(--text2)">本週趨勢</div>
+<div class="trend-bars"><div class="tb" style="height:60%"></div><div class="tb" style="height:45%"></div><div class="tb" style="height:70%"></div><div class="tb" style="height:55%"></div><div class="tb" style="height:80%"></div><div class="tb today" style="height:65%"></div><div class="tb" style="height:50%"></div></div>
+<div class="trend-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div></div></div>
+
+<div class="page" id="brain-dump">
+<div class="dump-mode-row"><div class="dump-mode-chip active" onclick="switchDumpMode(this,'text')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> 文字</div><div class="dump-mode-chip" onclick="switchDumpMode(this,'voice')"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg> 語音</div></div>
+<div class="dump-chat-area" id="dumpChat"><div class="dump-bubble mine"><div>聽日個 presentation 仲有幾頁未整完</div><div class="bubble-time">22:45</div></div><div class="dump-bubble ai"><div>已記錄。將佢交俾聽日嘅自己。</div><div class="bubble-time">22:45</div></div></div>
+<div class="tag-row"><span class="tag-chip active">全部</span><span class="tag-chip">💼 工作</span><span class="tag-chip">💡 靈感</span><span class="tag-chip">😌 情緒</span></div>
+<div class="dump-input-bar"><textarea id="dumpText" placeholder="將宜家腦入面嘅嘢全部寫低..." rows="1" oninput="this.style.height='';this.style.height=Math.min(this.scrollHeight,60)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addDump()}"></textarea><div class="send-round" onclick="addDump()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div></div>
+<div class="dump-to-wd" onclick="navigate('wind-down')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> 前往睡前放鬆</div></div>
+
+<div class="page" id="sleep">
+<div class="sleep-pills"><div class="sleep-pill-btn sp-wake" onclick="checkpoint('wake')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-bottom:4px"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2"/></svg>起身<span class="sp-sub">記錄起床時間</span></div><div class="sleep-pill-btn sp-bed" onclick="checkpoint('sleep')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-bottom:4px"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>準備瞓<span class="sp-sub">開始睡前放鬆</span></div></div>
+<div class="awake-alert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 喺床上仲未瞓著？<span class="aw-link" onclick="stillAwake()">修正 Still Awake</span></div>
+<div class="timeline-diary"><h3>睡眠日記</h3>
+<div class="tl-node"><div class="tl-dot active"></div><div class="tl-node-content"><div class="tl-time">23:45</div><div class="tl-action">準備入睡</div></div></div>
+<div class="tl-node"><div class="tl-dot"></div><div class="tl-node-content"><div class="tl-time">07:15</div><div class="tl-action">起身</div></div></div></div>
+<div class="ai-card"><div class="ai-header">🤖 AI 睡眠摘要</div><div class="ai-text">你嘅入睡時間比上星期平均早咗 25 分鐘。週末補眠傾向明顯，建議週六日保持相近嘅起身時間，有助穩定生理時鐘。</div></div></div>
+
+<div class="page" id="wind-down">
+<div class="wd-countdown"><div class="wd-circle"><div class="wd-circle-inner"><span class="big">10</span><span class="small">mins left</span></div></div>
+<div class="wd-bar-row"><div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar active"></div><div class="wd-bar"></div><div class="wd-bar"></div><div class="wd-bar"></div><div class="wd-bar"></div></div>
+<div class="wd-labels"><span>10</span><span></span><span></span><span>3</span><span></span><span></span><span>2</span><span></span><span>1</span><span>0</span></div></div>
+<div class="wd-review"><h3>今日回顧</h3>
+<div class="wd-review-item"><span class="wri-icon">💼</span><span class="wri-text">準備咗聽日嘅 presentation 大綱</span></div>
+<div class="wd-review-item"><span class="wri-icon">😌</span><span class="wri-text">放工嘅時候心情唔錯</span></div>
+<div class="wd-review-item"><span class="wri-icon">💡</span><span class="wri-text">記低咗一個新 project 嘅靈感</span></div></div>
+<div class="wd-cog" onclick="alert('引導式認知重構練習')"><div class="cog-icon">🧘</div><div class="cog-title">認知重構引導</div><div class="cog-desc">如果仲有嘢困擾緊你，試吓呢個 3 分鐘練習</div></div></div>
+
+<div class="page" id="settings">
+<div class="settings-section"><h3>作息設定</h3>
+<div class="setting-row"><span class="sr-label">作息模式</span><span class="sr-value">OT 不定時 ›</span></div>
+<div class="setting-row"><span class="sr-label">目標睡眠時長</span><span class="sr-value">7 小時 ›</span></div>
+<div class="setting-row"><span class="sr-label">目標入睡時間</span><span class="sr-value">23:30 ›</span></div></div>
+<div class="settings-section"><h3>通知</h3>
+<div class="setting-row"><span class="sr-label">睡前提醒</span><div class="sr-toggle on" onclick="this.classList.toggle('on')"></div></div>
+<div class="setting-row"><span class="sr-label">起身提醒</span><div class="sr-toggle on" onclick="this.classList.toggle('on')"></div></div>
+<div class="setting-row"><span class="sr-label">Wind-Down 提示</span><div class="sr-toggle" onclick="this.classList.toggle('on')"></div></div></div>
+<div class="settings-section"><h3>語言</h3>
+<div class="lang-chips"><div class="lang-chip active" onclick="selectLang(this)">粵語</div><div class="lang-chip" onclick="selectLang(this)">中文</div><div class="lang-chip" onclick="selectLang(this)">English</div></div></div>
+<div class="settings-section"><h3>數據</h3>
+<div class="setting-row"><span class="sr-label">週報統計</span><span class="sr-value">查看 ›</span></div>
+<div class="setting-row"><span class="sr-label">隱私設定</span><span class="sr-value">管理 ›</span></div></div></div>
+<div class="topbar"><div class="logo">slumber<span>.</span></div><div class="icon-btn" onclick="navigate('settings')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div></div>
+<div class="bottomnav">
+<div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>首頁</div>
+<div class="nav-item" data-page="brain-dump" onclick="navigate('brain-dump')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>記錄</div>
+<div class="nav-item" data-page="sleep" onclick="navigate('sleep')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>睡眠</div>
+<div class="nav-item" data-page="settings" onclick="navigate('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>我的</div></div>
+<button class="fab" onclick="quickDump()"><span class="fab-label">Brain Dump</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button></div>
+<script>
+let onboardStep=1;
+function navigate(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const nav=document.querySelector('.nav-item[data-page="'+id+'"]');if(nav)nav.classList.add('active');}
+function onboardNext(){const steps=document.querySelectorAll('.onboard-step');if(onboardStep<steps.length){steps[onboardStep-1].classList.remove('active');onboardStep++;steps[onboardStep-1].classList.add('active');}}
+function finishOnboard(){navigate('dashboard');}
+function selectSleep(el){document.querySelectorAll('#sTs .st-option').forEach(o=>o.classList.remove('active'));el.classList.add('active');}
+function selectSched(el){el.parentElement.querySelectorAll('.st-row').forEach(r=>r.classList.remove('active'));el.classList.add('active');}
+function quickDump(){navigate('brain-dump');setTimeout(function(){const t=document.getElementById('dumpText');if(t)t.focus();},300);}
+function switchDumpMode(el,mode){el.parentElement.querySelectorAll('.dump-mode-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+function addDump(){const t=document.getElementById('dumpText');const chat=document.getElementById('dumpChat');if(t&&t.value.trim()&&chat){const now=new Date();const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');const bubble=document.createElement('div');bubble.className='dump-bubble mine';bubble.innerHTML='<div>'+t.value.trim()+'</div><div class="bubble-time">'+time+'</div>';chat.appendChild(bubble);const ai=document.createElement('div');ai.className='dump-bubble ai';ai.innerHTML='<div>已記錄。</div><div class="bubble-time">'+time+'</div>';chat.appendChild(ai);chat.scrollTop=chat.scrollHeight;t.value='';t.style.height='';}}
+function checkpoint(type){alert(type==='wake'?'已記錄起床時間':'已記錄準備入睡');}
+function stillAwake(){alert('已修正 Still Awake 狀態');}
+function selectLang(el){el.parentElement.querySelectorAll('.lang-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+</script>
+</body>
+</html>

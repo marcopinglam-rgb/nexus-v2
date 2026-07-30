@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Slumber — Version B: Soft Neumorphism</title>
+<style>
+:root {
+  --bg: #e8e4df;
+  --bg2: #f0ede8;
+  --surface: #e8e4df;
+  --text: #3a3632;
+  --text2: #8a8580;
+  --text3: #b5b0aa;
+  --accent: #c4a882;
+  --accent2: #a89070;
+  --danger: #c08080;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --topbar-h: 52px;
+  --nav-h: 64px;
+  --shadow-sm: 3px 3px 8px rgba(0,0,0,.08), -3px -3px 8px rgba(255,255,255,.7);
+  --shadow-in: inset 3px 3px 6px rgba(0,0,0,.06), inset -3px -3px 6px rgba(255,255,255,.6);
+  --shadow-btn: 4px 4px 10px rgba(0,0,0,.08), -4px -4px 10px rgba(255,255,255,.7);
+  --shadow-btn-press: inset 2px 2px 6px rgba(0,0,0,.08), inset -2px -2px 6px rgba(255,255,255,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:#d5d0ca;color:var(--text);-webkit-font-smoothing:antialiased}
+body{display:flex;justify-content:center;align-items:center}
+.phone{
+  width:390px;height:844px;background:var(--bg);border-radius:32px;
+  position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.05);
+}
+
+/* Top Bar */
+.topbar{
+  position:absolute;top:0;left:0;right:0;height:var(--topbar-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;background:var(--bg);z-index:100;
+  box-shadow:0 1px 0 rgba(0,0,0,.05);
+}
+.topbar .logo{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
+.topbar .logo span{color:var(--accent2)}
+.topbar .icon-btn{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;cursor:pointer;color:var(--text2);transition:all .2s;
+  box-shadow:var(--shadow-sm);
+}
+.topbar .icon-btn:active{box-shadow:var(--shadow-btn-press)}
+
+/* Bottom Nav */
+.bottomnav{
+  position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);
+  display:flex;align-items:center;justify-content:space-around;
+  background:var(--bg);z-index:100;box-shadow:0 -1px 0 rgba(0,0,0,.05);
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;color:var(--text3);transition:all .2s;font-size:11px;
+  padding:6px 12px;border-radius:14px;
+}
+.nav-item.active{color:var(--accent2);font-weight:600}
+.nav-item svg{width:20px;height:20px}
+
+/* FAB */
+.fab{
+  position:absolute;bottom:calc(var(--nav-h) + 16px);right:20px;
+  width:48px;height:48px;border-radius:50%;background:var(--accent);
+  color:white;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:110;box-shadow:var(--shadow-btn);
+  font-size:22px;font-weight:300;transition:all .2s;border:none;
+}
+.fab:active{box-shadow:var(--shadow-btn-press);transform:scale(.94)}
+
+/* Content */
+.content{
+  position:absolute;top:var(--topbar-h);bottom:var(--nav-h);
+  left:0;right:0;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:none;
+}
+.content::-webkit-scrollbar{display:none}
+.page{display:none;padding:16px 20px 24px;min-height:100%}
+.page.active{display:block}
+
+/* ONBOARDING */
+.page#onboarding{padding-top:60px}
+#onboarding.active ~ .topbar,#onboarding.active ~ .bottomnav,#onboarding.active ~ .fab{display:none}
+#onboarding.active ~ .topbar{display:flex;background:transparent;box-shadow:none}
+#onboarding.active ~ .topbar .logo{opacity:0;pointer-events:none}
+#onboarding.active ~ .topbar .icon-btn{opacity:0}
+
+.onboard-step{display:none;animation:fadeUp .35s ease}
+.onboard-step.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.ob-title{font-size:26px;font-weight:700;line-height:1.3;margin-bottom:12px;color:var(--text)}
+.ob-sub{color:var(--text2);font-size:15px;line-height:1.5;margin-bottom:32px}
+.ob-illust{height:160px;display:flex;align-items:center;justify-content:center;margin:20px 0 32px;font-size:64px;opacity:.7}
+
+.btn-primary{
+  width:100%;padding:14px;border-radius:var(--radius);border:none;
+  background:var(--accent);color:white;font-size:16px;font-weight:600;
+  cursor:pointer;transition:all .2s;font-family:var(--font);
+  box-shadow:var(--shadow-btn);
+}
+.btn-primary:active{box-shadow:var(--shadow-btn-press);transform:scale(.98)}
+.btn-secondary{
+  width:100%;padding:14px;border-radius:var(--radius);border:none;
+  background:transparent;color:var(--text2);font-size:16px;cursor:pointer;
+  transition:all .2s;margin-top:10px;font-family:var(--font);
+}
+.btn-secondary:active{opacity:.7}
+
+.ob-dots{display:flex;gap:8px;justify-content:center;margin-top:28px}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);transition:all .3s}
+.ob-dot.active{background:var(--accent);width:24px;border-radius:4px}
+
+.sleep-target{display:flex;gap:12px;justify-content:center;margin:20px 0 32px}
+.st-option{
+  width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .2s;
+  box-shadow:var(--shadow-sm);
+}
+.st-option.active{box-shadow:var(--shadow-btn-press);color:var(--accent2);background:var(--bg2)}
+
+.schedule-type{display:flex;flex-direction:column;gap:10px;margin:20px 0 32px}
+.st-row{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius);
+  cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm);
+}
+.st-row.active{box-shadow:var(--shadow-btn-press);background:var(--bg2)}
+.st-row .st-icon{font-size:28px;opacity:.7}
+.st-row .st-label{font-weight:600;font-size:15px;color:var(--text)}
+.st-row .st-desc{font-size:12px;color:var(--text2)}
+
+/* DASHBOARD */
+.snapshot-card{
+  background:var(--bg);padding:18px;margin-bottom:14px;
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);
+}
+.snapshot-card .sn-title{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:10px}
+.snapshot-card .sn-big{font-size:42px;font-weight:300;letter-spacing:-2px}
+.snapshot-card .sn-big .unit{font-size:16px;color:var(--text2);font-weight:400;letter-spacing:0}
+.snapshot-card .sn-meta{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--text2)}
+.snapshot-card .sn-meta span{color:var(--text);font-weight:500}
+
+.dump-input{
+  background:var(--bg);padding:14px 16px;margin-bottom:14px;
+  border-radius:var(--radius);display:flex;align-items:center;gap:10px;
+  box-shadow:var(--shadow-in);
+}
+.dump-input input{
+  flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;
+  font-family:var(--font);
+}
+.dump-input input::placeholder{color:var(--text3)}
+.dump-input .send{color:var(--accent2);cursor:pointer;font-size:18px;font-weight:700}
+
+.checkpoint-row{display:flex;gap:12px;margin-bottom:14px}
+.cp-btn{
+  flex:1;padding:16px;border-radius:var(--radius);text-align:center;
+  cursor:pointer;font-weight:600;font-size:14px;transition:all .2s;
+  box-shadow:var(--shadow-sm);
+}
+.cp-wake{color:var(--accent2)}
+.cp-sleep{color:#6070a0}
+.cp-btn:active{box-shadow:var(--shadow-btn-press)}
+
+.review-card{
+  background:var(--bg);padding:16px;margin-bottom:14px;
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);
+}
+.review-card .rv-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.review-card .rv-title{font-size:14px;font-weight:600}
+.review-card .rv-date{font-size:12px;color:var(--text2)}
+.review-card .rv-score{font-size:14px;color:var(--accent2);font-weight:600}
+.review-card .rv-text{font-size:13px;color:var(--text2);line-height:1.5}
+
+.trend-chart{
+  background:var(--bg);padding:16px;border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+}
+.trend-chart .tr-header{font-size:14px;font-weight:600;margin-bottom:8px}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;padding-top:8px}
+.chart-bar{
+  flex:1;background:var(--accent);border-radius:6px;min-height:4px;
+  opacity:.35;box-shadow:inset 0 0 4px rgba(0,0,0,.1);
+}
+.chart-bar.today{opacity:1;background:var(--accent2)}
+.chart-labels{display:flex;gap:6px;margin-top:6px}
+.chart-labels span{flex:1;text-align:center;font-size:10px;color:var(--text3)}
+
+/* BRAIN DUMP */
+.dump-mode-toggle{
+  display:flex;background:var(--bg);padding:3px;margin-bottom:16px;
+  border-radius:14px;box-shadow:var(--shadow-in);
+}
+.dump-mode-btn{
+  flex:1;padding:10px;text-align:center;border-radius:12px;
+  cursor:pointer;font-size:14px;transition:all .2s;color:var(--text2);
+}
+.dump-mode-btn.active{background:var(--bg);color:var(--text);box-shadow:var(--shadow-sm);font-weight:600}
+
+.dump-textarea{
+  width:100%;min-height:140px;background:var(--bg);border:none;
+  border-radius:var(--radius);padding:14px;color:var(--text);font-size:14px;
+  resize:none;font-family:var(--font);outline:none;margin-bottom:12px;
+  box-shadow:var(--shadow-in);
+}
+.dump-textarea::placeholder{color:var(--text3)}
+.dump-textarea:focus{box-shadow:inset 3px 3px 8px rgba(0,0,0,.1), inset -3px -3px 8px rgba(255,255,255,.5)}
+
+.tag-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tag{
+  font-size:12px;padding:6px 14px;border-radius:20px;color:var(--text2);
+  cursor:pointer;box-shadow:var(--shadow-sm);transition:all .2s;
+}
+.tag.active,.tag:hover{box-shadow:var(--shadow-btn-press);color:var(--accent2)}
+
+.timeline{margin-top:20px}
+.timeline h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text2)}
+.tl-item{
+  display:flex;gap:12px;margin-bottom:14px;padding:14px;
+  border-radius:var(--radius-sm);box-shadow:var(--shadow-sm);
+}
+.tl-time{font-size:11px;color:var(--text3);min-width:48px;font-weight:600}
+.tl-content{flex:1}
+.tl-text{font-size:13px;line-height:1.5;margin-bottom:4px}
+.tl-tag{font-size:10px;padding:3px 10px;border-radius:10px;display:inline-block;margin-right:4px;box-shadow:var(--shadow-sm)}
+.tl-tag.work{color:var(--accent2)}
+.tl-tag.emo{color:#a08090}
+.tl-tag.inspire{color:#709080}
+
+.export-btn{
+  margin-top:16px;text-align:center;padding:14px;color:var(--accent2);
+  font-size:14px;cursor:pointer;border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);font-weight:500;
+}
+.export-btn:active{box-shadow:var(--shadow-btn-press)}
+
+/* SLEEP PAGE */
+.sleep-big-btns{display:flex;gap:14px;margin-bottom:20px}
+.sleep-big{
+  flex:1;padding:24px 12px;border-radius:var(--radius);text-align:center;
+  cursor:pointer;font-weight:600;font-size:16px;transition:all .2s;
+}
+.sleep-wake{box-shadow:var(--shadow-sm);color:var(--accent2)}
+.sleep-bed{box-shadow:var(--shadow-sm);color:#6070a0}
+.sleep-big:active{box-shadow:var(--shadow-btn-press);transform:scale(.96)}
+.sleep-sub{font-size:11px;opacity:.6;font-weight:400;display:block;margin-top:4px}
+
+.awake-correction{
+  padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--text2);border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+}
+.awake-correction .aw-icon{font-size:20px}
+.awake-correction .aw-link{color:var(--accent2);cursor:pointer;font-weight:500;margin-left:auto}
+
+.sleep-diary{margin-bottom:16px}
+.sleep-diary h3{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text2)}
+.diary-entry{
+  padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;
+  cursor:pointer;transition:all .2s;border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-sm);
+}
+.diary-entry:active{box-shadow:var(--shadow-btn-press)}
+.diary-entry .de-time{font-size:13px;font-weight:600;min-width:44px}
+.diary-entry .de-action{font-size:13px;flex:1}
+.diary-entry .de-edit{color:var(--text3);font-size:18px;cursor:pointer}
+
+.sleep-trend{padding:16px;border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.ai-summary{font-size:12px;color:var(--text2);line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.05)}
+
+/* WIND-DOWN */
+.wd-countdown{text-align:center;margin-bottom:24px}
+.wd-circle{
+  width:140px;height:140px;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-sm);
+}
+.wd-circle-inner{font-size:48px;font-weight:200;letter-spacing:-2px;color:var(--text)}
+.wd-circle-inner .small{font-size:14px;color:var(--text2);display:block;font-weight:400}
+.wd-bar-row{display:flex;gap:5px;max-width:220px;margin:0 auto}
+.wd-bar{height:4px;flex:1;border-radius:2px;background:var(--bg);box-shadow:var(--shadow-in)}
+.wd-bar.done{background:var(--accent);box-shadow:inset 0 0 3px rgba(0,0,0,.1)}
+.wd-bar.active{background:var(--accent2);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.wd-labels{display:flex;justify-content:space-between;max-width:280px;margin:6px auto 0;font-size:10px;color:var(--text3)}
+
+.wd-review{margin-bottom:16px}
+.wd-review h3{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--text2)}
+.wd-review-item{
+  padding:10px 14px;margin-bottom:6px;font-size:13px;
+  display:flex;align-items:center;gap:10px;opacity:.75;
+  border-radius:var(--radius-sm);box-shadow:var(--shadow-sm);
+}
+.wd-review-item .wri-icon{font-size:16px}
+.wd-review-item .wri-text{flex:1;line-height:1.4}
+
+.wd-cog{
+  padding:18px;text-align:center;cursor:pointer;transition:all .2s;
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);
+}
+.wd-cog:active{box-shadow:var(--shadow-btn-press)}
+.wd-cog .cog-icon{font-size:32px;margin-bottom:8px}
+.wd-cog .cog-title{font-size:15px;font-weight:600;color:var(--text)}
+.wd-cog .cog-desc{font-size:12px;color:var(--text2);margin-top:4px}
+
+/* SETTINGS */
+.settings-section{margin-bottom:24px}
+.settings-section h3{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px}
+.setting-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0;border-bottom:1px solid rgba(0,0,0,.05);
+}
+.setting-row .sr-label{font-size:14px;color:var(--text)}
+.setting-row .sr-value{font-size:13px;color:var(--text2)}
+.setting-row .sr-toggle{
+  width:44px;height:26px;border-radius:13px;position:relative;cursor:pointer;transition:all .3s;
+  box-shadow:var(--shadow-in);
+}
+.setting-row .sr-toggle.on{background:var(--accent);box-shadow:inset 0 0 4px rgba(0,0,0,.15)}
+.setting-row .sr-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:white;transition:transform .3s;box-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+.setting-row .sr-toggle.on::after{transform:translateX(18px)}
+
+.lang-tags{display:flex;gap:8px}
+.lang-tag{
+  padding:8px 16px;border-radius:20px;font-size:13px;cursor:pointer;color:var(--text2);
+  transition:all .2s;box-shadow:var(--shadow-sm);
+}
+.lang-tag.active{box-shadow:var(--shadow-btn-press);color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<div class="phone">
+
+<!-- ====== PAGE 1: ONBOARDING ====== -->
+<div class="page active" id="onboarding">
+  <div class="onboard-step active" data-step="1">
+    <div class="ob-illust">🌙</div>
+    <div class="ob-title">釋放心中雜念<br>找回睡眠節奏</div>
+    <div class="ob-sub">唔係追蹤你嘅睡眠，而係幫你解決失眠嘅根源——日間積壓嘅思緒同不規律作息。</div>
+    <button class="btn-primary" onclick="onboardNext()">開始了解</button>
+    <div class="ob-dots"><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+  </div>
+
+  <div class="onboard-step" data-step="2">
+    <div class="ob-illust">⏰</div>
+    <div class="ob-title">你嘅目標睡眠時長</div>
+    <div class="ob-sub">香港人平均瞓6.5小時，但你值得更好。</div>
+    <div class="sleep-target" id="sleepTargets">
+      <div class="st-option" data-h="6" onclick="selectSleep(this)">6<span style="font-size:11px;display:block">hrs</span></div>
+      <div class="st-option active" data-h="7" onclick="selectSleep(this)">7<span style="font-size:11px;display:block">hrs</span></div>
+      <div class="st-option" data-h="8" onclick="selectSleep(this)">8<span style="font-size:11px;display:block">hrs</span></div>
+      <div class="st-option" data-h="9" onclick="selectSleep(this)">9<span style="font-size:11px;display:block">hrs</span></div>
+    </div>
+    <button class="btn-primary" onclick="onboardNext()">繼續</button>
+    <div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+  </div>
+
+  <div class="onboard-step" data-step="3">
+    <div class="ob-illust">🔄</div>
+    <div class="ob-title">你嘅作息模式</div>
+    <div class="ob-sub">我哋會根據你嘅作息，提供最合適嘅建議。</div>
+    <div class="schedule-type">
+      <div class="st-row active" data-sched="fixed" onclick="selectSched(this)">
+        <div class="st-icon">📌</div>
+        <div><div class="st-label">固定作息</div><div class="st-desc">每日相近嘅起身/瞓覺時間</div></div>
+      </div>
+      <div class="st-row" data-sched="ot" onclick="selectSched(this)">
+        <div class="st-icon">🌙</div>
+        <div><div class="st-label">OT 不定時</div><div class="st-desc">經常加班，作息時間浮動</div></div>
+      </div>
+      <div class="st-row" data-sched="shift" onclick="selectSched(this)">
+        <div class="st-icon">🔄</div>
+        <div><div class="st-label">輪班工作</div><div class="st-desc">日夜交替，週期性轉換</div></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="onboardNext()">繼續</button>
+    <div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div></div>
+  </div>
+
+  <div class="onboard-step" data-step="4">
+    <div class="ob-illust">🔔</div>
+    <div class="ob-title">準備好開始未？</div>
+    <div class="ob-sub">我哋會喺適當時候提醒你準備瞓覺同起身，幫你建立規律嘅作息。</div>
+    <button class="btn-primary" onclick="finishOnboard()">開啟通知，開始改善睡眠</button>
+    <button class="btn-secondary" onclick="finishOnboard()">稍後設定</button>
+    <div class="ob-dots"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div></div>
+  </div>
+</div>
+
+<!-- ====== PAGE 2: DASHBOARD ====== -->
+<div class="page" id="dashboard">
+  <div class="snapshot-card">
+    <div class="sn-title">今晚目標</div>
+    <div class="sn-big">7<span class="unit">h</span> 30<span class="unit">m</span></div>
+    <div class="sn-meta"><span>建議入睡 23:30</span><span>預計起身 07:00</span></div>
+  </div>
+  <div class="dump-input">
+    <span style="font-size:18px">💭</span>
+    <input type="text" placeholder="將腦裡面嘅嘢寫低...">
+    <span class="send" onclick="navigate('brain-dump')">→</span>
+  </div>
+  <div class="checkpoint-row">
+    <div class="cp-btn cp-wake" onclick="navigate('sleep')">☀️ 起身 Check-in</div>
+    <div class="cp-btn cp-sleep" onclick="navigate('sleep')">🌙 準備瞓覺</div>
+  </div>
+  <div class="review-card">
+    <div class="rv-header">
+      <div class="rv-title">☀️ 今朝回顧</div>
+      <div class="rv-date">7月27日</div>
+    </div>
+    <div class="rv-score">睡眠質素 78/100</div>
+    <div class="rv-text">尋晚 7 小時 12 分鐘，中途醒咗 1 次。深層睡眠比例正常。</div>
+  </div>
+  <div class="trend-chart">
+    <div class="tr-header">本週趨勢</div>
+    <div class="chart-bars">
+      <div class="chart-bar" style="height:60%"></div><div class="chart-bar" style="height:45%"></div>
+      <div class="chart-bar" style="height:70%"></div><div class="chart-bar" style="height:55%"></div>
+      <div class="chart-bar" style="height:80%"></div><div class="chart-bar today" style="height:65%"></div>
+      <div class="chart-bar" style="height:50%"></div>
+    </div>
+    <div class="chart-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+  </div>
+</div>
+
+<!-- ====== PAGE 3: BRAIN DUMP ====== -->
+<div class="page" id="brain-dump">
+  <div class="dump-mode-toggle">
+    <div class="dump-mode-btn active" onclick="switchDumpMode(this,'text')">✏️ 文字</div>
+    <div class="dump-mode-btn" onclick="switchDumpMode(this,'voice')">🎤 語音</div>
+  </div>
+  <textarea class="dump-textarea" id="dumpText" placeholder="將宜家腦入面嘅嘢全部寫低... 唔使整理，純粹釋放。"></textarea>
+  <div class="tag-row">
+    <span class="tag active">全部</span>
+    <span class="tag">💼 工作</span>
+    <span class="tag">💡 靈感</span>
+    <span class="tag">😌 情緒</span>
+  </div>
+  <button class="btn-primary" onclick="addDump()">記錄</button>
+  <div class="timeline">
+    <h3>歷史記錄</h3>
+    <div class="tl-item">
+      <div class="tl-time">22:45</div>
+      <div class="tl-content">
+        <div class="tl-text">聽日個presentation仲有幾頁未整完，但係唔好諗住，瞓醒再算。</div>
+        <span class="tl-tag work">工作</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">21:30</div>
+      <div class="tl-content">
+        <div class="tl-text">今日同同事傾偈嗰陣忽然諗到個新project方向，好似有得做。</div>
+        <span class="tl-tag inspire">靈感</span>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-time">20:15</div>
+      <div class="tl-content">
+        <div class="tl-text">放工返到屋企有啲攰，但係心情幾好。今日效率唔錯。</div>
+        <span class="tl-tag emo">情緒</span>
+      </div>
+    </div>
+  </div>
+  <div class="export-btn">📤 轉存到訊息 / 筆記</div>
+</div>
+
+<!-- ====== PAGE 4: SLEEP ====== -->
+<div class="page" id="sleep">
+  <div class="sleep-big-btns">
+    <div class="sleep-big sleep-wake" onclick="checkpoint('wake')">☀️ 起身<span class="sleep-sub">記錄起床時間</span></div>
+    <div class="sleep-big sleep-bed" onclick="checkpoint('sleep')">🌙 準備瞓<span class="sleep-sub">開始睡前放鬆</span></div>
+  </div>
+  <div class="awake-correction">
+    <span class="aw-icon">⏱️</span>喺床上仲未瞓著？<span class="aw-link" onclick="stillAwake()">修正 Still Awake</span>
+  </div>
+  <div class="sleep-diary">
+    <h3>📋 睡眠日記</h3>
+    <div class="diary-entry"><div class="de-time">23:45</div><div class="de-action">準備入睡</div><div class="de-edit">⋯</div></div>
+    <div class="diary-entry"><div class="de-time">07:15</div><div class="de-action">起身</div><div class="de-edit">⋯</div></div>
+    <div class="diary-entry" style="opacity:.4"><div class="de-time" style="color:var(--text3)">+ 新增</div><div class="de-action" style="color:var(--text3)">手動添加記錄</div></div>
+  </div>
+  <div class="sleep-trend">
+    <div class="tr-header">📊 本週趨勢 + AI 摘要</div>
+    <div class="chart-bars" style="height:50px;margin:8px 0">
+      <div class="chart-bar" style="height:50%"></div><div class="chart-bar" style="height:65%"></div><div class="chart-bar" style="height:55%"></div>
+      <div class="chart-bar" style="height:90%"></div><div class="chart-bar" style="height:70%"></div><div class="chart-bar today" style="height:80%"></div><div class="chart-bar" style="height:60%"></div>
+    </div>
+    <div class="ai-summary">🤖 你嘅入睡時間比上星期平均早咗 25 分鐘。週末補眠傾向明顯，建議週六日保持相近嘅起身時間，有助穩定生理時鐘。</div>
+  </div>
+</div>
+
+<!-- ====== PAGE 5: WIND-DOWN ====== -->
+<div class="page" id="wind-down">
+  <div class="wd-countdown">
+    <div class="wd-circle">
+      <div class="wd-circle-inner">10<span class="small">mins left</span></div>
+    </div>
+    <div class="wd-bar-row">
+      <div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar done"></div>
+      <div class="wd-bar done"></div><div class="wd-bar done"></div><div class="wd-bar active"></div>
+      <div class="wd-bar"></div><div class="wd-bar"></div><div class="wd-bar"></div><div class="wd-bar"></div>
+    </div>
+    <div class="wd-labels"><span>10</span><span>3</span><span>2</span><span>1</span><span>0</span></div>
+  </div>
+  <div class="wd-review">
+    <h3>今日回顧</h3>
+    <div class="wd-review-item"><span class="wri-icon">💼</span><span class="wri-text">準備咗聽日嘅 presentation 大綱</span></div>
+    <div class="wd-review-item"><span class="wri-icon">😌</span><span class="wri-text">放工嘅時候心情唔錯，感覺今日效率幾好</span></div>
+    <div class="wd-review-item"><span class="wri-icon">💡</span><span class="wri-text">記低咗一個新 project 嘅靈感</span></div>
+  </div>
+  <div class="wd-cog" onclick="alert('引導式認知重構練習')">
+    <div class="cog-icon">🧘</div>
+    <div class="cog-title">認知重構引導</div>
+    <div class="cog-desc">如果仲有嘢困擾緊你，試吓呢個 3 分鐘練習</div>
+  </div>
+</div>
+
+<!-- ====== PAGE 6: SETTINGS ====== -->
+<div class="page" id="settings">
+  <div class="settings-section">
+    <h3>作息設定</h3>
+    <div class="setting-row"><span class="sr-label">作息模式</span><span class="sr-value">OT 不定時 ›</span></div>
+    <div class="setting-row"><span class="sr-label">目標睡眠時長</span><span class="sr-value">7 小時 ›</span></div>
+    <div class="setting-row"><span class="sr-label">目標入睡時間</span><span class="sr-value">23:30 ›</span></div>
+  </div>
+  <div class="settings-section">
+    <h3>通知</h3>
+    <div class="setting-row"><span class="sr-label">睡前提醒</span><div class="sr-toggle on" onclick="this.classList.toggle('on')"></div></div>
+    <div class="setting-row"><span class="sr-label">起身提醒</span><div class="sr-toggle on" onclick="this.classList.toggle('on')"></div></div>
+    <div class="setting-row"><span class="sr-label">Wind-Down 提示</span><div class="sr-toggle" onclick="this.classList.toggle('on')"></div></div>
+  </div>
+  <div class="settings-section">
+    <h3>語言</h3>
+    <div class="lang-tags">
+      <div class="lang-tag active" onclick="selectLang(this)">粵語</div>
+      <div class="lang-tag" onclick="selectLang(this)">中文</div>
+      <div class="lang-tag" onclick="selectLang(this)">English</div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h3>數據</h3>
+    <div class="setting-row"><span class="sr-label">週報統計</span><span class="sr-value">查看 ›</span></div>
+    <div class="setting-row"><span class="sr-label">隱私設定</span><span class="sr-value">管理 ›</span></div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">slumber<span>.</span></div>
+  <div class="icon-btn" onclick="navigate('settings')">⚙</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottomnav">
+  <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>首頁
+  </div>
+  <div class="nav-item" data-page="brain-dump" onclick="navigate('brain-dump')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>記錄
+  </div>
+  <div class="nav-item" data-page="sleep" onclick="navigate('sleep')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>睡眠
+  </div>
+  <div class="nav-item" data-page="settings" onclick="navigate('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>我的
+  </div>
+</div>
+
+<button class="fab" onclick="quickDump()" title="長按快速 Brain Dump">💭</button>
+</div>
+
+<script>
+let onboardStep=1;
+function navigate(page){
+  if(page==='onboarding')return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById(page);if(t)t.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const nav=document.querySelector(`.nav-item[data-page="${page}"]`);if(nav)nav.classList.add('active');
+}
+function onboardNext(){
+  const steps=document.querySelectorAll('.onboard-step');
+  steps[onboardStep-1].classList.remove('active');onboardStep++;
+  if(onboardStep<=4)steps[onboardStep-1].classList.add('active');
+}
+function finishOnboard(){document.getElementById('onboarding').classList.remove('active');navigate('dashboard');}
+function selectSleep(el){el.parentElement.querySelectorAll('.st-option').forEach(o=>o.classList.remove('active'));el.classList.add('active');}
+function selectSched(el){el.parentElement.querySelectorAll('.st-row').forEach(r=>r.classList.remove('active'));el.classList.add('active');}
+function switchDumpMode(el,m){el.parentElement.querySelectorAll('.dump-mode-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function quickDump(){navigate('brain-dump');setTimeout(()=>document.getElementById('dumpText')?.focus(),300);}
+function checkpoint(t){alert(t==='wake'?'已記錄起床時間：07:15':'已記錄準備瞓覺：23:45');}
+function stillAwake(){alert('已修正：Still Awake — 實際入睡時間延後至 00:30');}
+function addDump(){alert('已記錄');}
+function selectLang(el){el.parentElement.querySelectorAll('.lang-tag').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+</script>
+</body>
+</html>
