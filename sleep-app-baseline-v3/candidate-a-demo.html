@@ -314,6 +314,21 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .sr-bar-fill{height:100%;border-radius:9px;transition:width .5s}
 .sr-bar-val{font-size:10px;color:var(--text2);min-width:32px}
 
+/* ══════════════════════════════ REFRAME CARD ══════════════════════════════ */
+.reframe-section{margin-top:10px;overflow:hidden;transition:max-height .35s ease,opacity .35s ease}
+.reframe-section.collapsed{max-height:0;opacity:0;margin-top:0}
+.reframe-section.expanded{max-height:200px;opacity:1}
+.reframe-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);
+  background:rgba(107,125,184,.06);border:1px solid rgba(107,125,184,.15);cursor:pointer;
+  font-size:11px;color:var(--accent);transition:all .2s;margin-top:4px}
+.reframe-badge:hover{background:rgba(107,125,184,.12);border-color:rgba(107,125,184,.25)}
+.reframe-badge:active{transform:scale(.96)}
+.reframe-body{margin-top:10px;padding:14px 16px;background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.1);
+  border-radius:var(--radius);font-size:13px;line-height:1.7;color:var(--text)}
+.reframe-body .rf-text{margin-bottom:10px}
+.reframe-body .rf-action{font-size:11px;color:var(--accent);display:flex;align-items:flex-start;gap:6px;line-height:1.6}
+.reframe-body .rf-icon{flex-shrink:0;font-size:14px}
+
 /* ══════════════════════════════ SCROLLBAR ══════════════════════════════ */
 .page::-webkit-scrollbar{width:3px}
 .page::-webkit-scrollbar-track{background:transparent}
@@ -587,6 +602,140 @@ var SENTIMENT_LABELS=ZS_LABELS.slice(0,3);
 var CATEGORY_LABELS=ZS_LABELS.slice(3,7);
 window._lastMood=null;
 
+/* ════════════════════════ REFRAME: CONSTANTS ════════════════════════ */
+var REFRAME_STORAGE_DAILY='slumber_reframe_daily';
+var REFRAME_STORAGE_USED='slumber_reframe_used';
+var REFRAME_DAILY_MAX=3;
+var REFRAME_USED_MAX=5;
+
+/* ════════════════════════ REFRAME: THEME PRIORITY ════════════════════════ */
+var THEME_PRIORITY_ORDER=[
+  '學業壓力',
+  '金錢壓力',
+  '家庭壓力',
+  '人際關係',
+  '工作壓力',
+  '未來焦慮',
+  '自我懷疑',
+  '身體疲累'
+  // 'general' is fallback, not in priority list
+];
+
+/* ════════════════════════ REFRAME: THEME KEYWORDS (long→short within each theme) ════════════════════════ */
+var THEME_KEYWORDS={
+  '工作壓力': [
+    'presentation','powerpoint','spreadsheet','supervisor','multitask','briefing','conference','director','deadline','backlog','manager','project','proposal','meeting','report',
+    '收唔到工','星期一','聽日返工','分唔到身','好晏先走','返office','返公司','prepare','present','excel','pitch','task',
+    '做唔切','未做完','未搞掂','做唔完','趕唔切','未交','積埋','拖住','拖咗','拖欠','提交','ddl',
+    '做死','忙到','好忙','堆積','開會','開call','加班','開OT','老細','上司','boss','team','高層','上頭',
+    'OT到','OT','做緊','整緊','寫緊','返工','趕住','交唔到','好多嘢做','份report','份proposal'
+  ],
+  '人際關係': [
+    'whatsapp group','social anxiety','best friend','已讀不回','俾人跣','好尷尬',
+    '男朋友','女朋友','另一半','被背叛','俾人呃','唔識應對','冇反應','消失咗',
+    '炒大鑊','俾人鬧','俾人話','俾人嘈','唔理我','好嬲','激氣','委屈','冷戰','ignore','block','ghost',
+    'partner','dating','group','閨蜜','兄弟','姊妹','群組','前度','date','hurt','鬧交','嘈交','嗌交',
+    '冇面','瘀','社恐','怕醜','唔敢','出賣','唔覆','忽視','好傷',
+    '朋友','同事','拍拖','約會','ex','bf','gf',
+    '嬲','鬧','嘈','呃'
+  ],
+  '自我懷疑': [
+    '渾渾噩噩','唔知自己想點','唔知做緊乜','精神崩潰','覺得自己','懷疑自己','點解人地',
+    '如果當初','唔應該','點解我會','好大壓力','imposter','burnout',
+    '冇方向','冇價值','冇把握','冇信心','唔及人','輸俾','捱唔住','爆煲','就嚟癲','就快死',
+    '唔夠好','做唔到','好失敗','好迷茫','好冇用','好廢','後悔','做錯','出錯','早知',
+    '唔肯定','唔得','質疑','唔配','迷惘','迷失','人地','人哋','比較',
+    '頂唔順','搞砸咗','整衰咗','佢做到','我得唔到','drained',
+    '冇用','累贅','負累','好攰'
+  ],
+  '身體疲累': [
+    '膊頭痛','肌肉酸痛','行都冇力','企都冇力','眼乾','眼痛','頸痛','膊緊',
+    '瞓極都攰','唔舒服','冇胃口','冇energy','冇體力','食唔落','周身痛','冇精神','冇電',
+    '好眼瞓','好攰','超攰','攰到','失眠','喉嚨痛','半夜醒','瞓唔夠','瞓唔到','瞓得差',
+    '虛脫','榨乾','頭痛','腰痛','背痛','感冒','發燒','唔夠瞓','淺睡','drained',
+    '冇力','病','早醒','攰'
+  ],
+  '未來焦慮': [
+    '唔知做得幾耐','唔想做呢行','原地踏步','停滯不前','organize','career','layoff',
+    'interview','promotion','mortgage','hopeless','resign','stuck',
+    '冇將來','冇保障','唔穩定','唔知會點','唔知點算','組織家庭','讀返書','冇工','轉行','轉field',
+    '裁員','炒人','樽頸','中年','30歲','40歲','結婚','買樓','生仔','年紀大','揾工','轉工','辭職',
+    '前途','前路','出路','將來','灰',
+    '升職','升唔到','公司唔掂','份糧','請唔請','見工','CV','老',
+    '唔知點算','唔穩定'
+  ],
+  '金錢壓力': [
+    'student loan','credit card','bitcoin','mortgage',
+    '月光族','月月光','唔夠錢','管理費','還唔起','洗大咗','使大咗','好窮',
+    '破產','還錢','卡數','欠債','租金','供樓','水電煤','差餉','信用卡','收入少',
+    '冇錢','大洗','消費','份糧','人工','出糧','薪水','蝕錢','輸錢','股票','投資',
+    'broke','loan','crypto','大跌','熊市',
+    '窮','錢','債'
+  ],
+  '家庭壓力': [
+    '比較兄弟姊妹','見到佢哋','同屋企嘈','返屋企','幾時拍拖','幾時生',
+    '阿媽','阿爸','老豆','老母','父母','家長','兄弟','姊妹','阿哥','細佬','家姐','阿妹',
+    '結婚話題','相睇','偏心',
+    '返去','面對','逼我','管我','控制','干涉','煩我','期望','要求','要我','想你','催',
+    '嘈我','哦我','鬧我'
+  ],
+  '學業壓力': [
+    'dissertation','professor','supervisor','assignment','lecturer','midterm','retake','resit',
+    '最後一年','文憑試','進度落後','唔合格','final year','graduate','project','thesis','essay','paper','behind','final',
+    '讀唔切','溫唔切','溫唔晒','未溫','肥佬','補考','畢業','大考','測驗','考試','功課','成績','分數','fail',
+    '畢業','DSE','test','exam','gpa','FYP','畢唔到業'
+  ]
+};
+
+/* ════════════════════════ REFRAME: TEMPLATES (theme → [{id,reframe,action}]) ════════════════════════ */
+var REFRAME_TEMPLATES={
+  '工作壓力': [
+    {id:'work-1',reframe:'你已經為今日做咗好多，而家嘅任務係俾自己真正休息，唔係繼續喺腦入面開OT。',action:'試下喺手機寫低 3 樣今日完成咗嘅嘢，然後合埋眼深呼吸 3 次。'},
+    {id:'work-2',reframe:'工作永遠做唔完，但你嘅精神需要 recharge。放低嘅嘢聽日唔會消失，但你嘅精力會。',action:'今晚淨係諗一件事：你值得休息。其他嘢交俾聽日嘅你。'},
+    {id:'work-3',reframe:'你嘅焦慮嚟自責任感，而唔係能力不足。識得停低嘅人，先至行得遠。',action:'試下用 4-7-8 呼吸法：吸 4 秒、hold 7 秒、呼 8 秒，重複 3 次。'}
+  ],
+  '人際關係': [
+    {id:'social-1',reframe:'人與人之間有起有伏係正常嘅。今晚唔需要解決所有問題，俾啲空間自己同對方。',action:'如果件事仲喺心入面轉，試下寫低你真正想表達嘅一句說話，然後放低。'},
+    {id:'social-2',reframe:'你嘅感受係 valid 嘅，唔好因為瞓唔著就否定自己嘅情緒。但呢一刻，你嘅平靜比任何嘢都重要。',action:'想像將呢段關係嘅煩惱放喺一個盒度，聽日先打開。今晚個盒鎖住。'},
+    {id:'social-3',reframe:'關係嘅嘢急唔嚟。今晚你唯一需要照顧嘅關係，係同自己嘅關係。',action:'合埋眼，想像一個令你感到安心嘅人或者地方，停留 30 秒。'}
+  ],
+  '自我懷疑': [
+    {id:'self-1',reframe:'你比自己想像中更有能力，只係而家太攰所以睇唔到。每個人都有懷疑自己嘅時候，但呢啲想法唔代表事實。',action:'諗一樣你最近做到而你覺得自豪嘅事，幾細都得。'},
+    {id:'self-2',reframe:'負面嘅自我評價通常喺夜晚放大十倍。聽日朝早你睇返同一件事，感覺會好唔同。',action:'今晚嘅目標唔係解決所有問題，只係安全咁渡過呢個晚上。'},
+    {id:'self-3',reframe:'你喺度努力緊，呢一點本身就值得尊重。成長唔係一條直線，而係有高有低嘅旅程。',action:'對自己講一句：「我已經做得夠好，而家我需要休息。」'}
+  ],
+  '身體疲累': [
+    {id:'body-1',reframe:'身體攰嘅時候，情緒都會被拖低。而家最重要嘅唔係解決問題，而係俾身體恢復。',action:'做一個簡單嘅身體掃描：由頭頂開始，慢慢感受每個部位，放鬆佢。'},
+    {id:'body-2',reframe:'你嘅身體今日為你撐咗成日，而家係時候回報佢。攰唔係 weakness，係 signal。',action:'試下慢慢轉動膊頭 5 次，然後深深呼一口氣，感受身體嘅重量落喺床上面。'},
+    {id:'body-3',reframe:'攰嘅時候唔好逼自己正面，接受「今日就係攰」反而係最好嘅放鬆。',action:'閂眼，想像自己浮喺溫暖嘅水面，每呼一口氣就下沉少少，更放鬆。'}
+  ],
+  '未來焦慮': [
+    {id:'future-1',reframe:'未來係由無數個「今日」組成嘅。你今日好好休息，就係為未來做咗最重要嘅投資。',action:'今晚淨係諗一件事：聽日嘅第一步係乜？淨係第一步就夠。'},
+    {id:'future-2',reframe:'焦慮嚟自對未知嘅想像，而唔係現實。大部份你擔心嘅事，最後都冇發生。',action:'試下將你擔心嘅嘢寫成一句話，然後喺旁邊寫「呢個係事實定係想像？」'},
+    {id:'future-3',reframe:'你唔需要今晚就知道所有答案。好多人生最好嘅轉變，都係喺你冇計劃嘅時候出現。',action:'合埋眼，想像 3 個月後嘅你——健康、平靜、安然。你正在朝呢個方向行緊。'}
+  ],
+  '金錢壓力': [
+    {id:'money-1',reframe:'財務壓力好真實，但失眠唔會令戶口多咗錢。好好休息，聽日嘅你會有更清晰嘅頭腦去應對。',action:'今晚淨係 focus 喺你可控制嘅事：呼吸、放鬆、俾身體恢復。'},
+    {id:'money-2',reframe:'錢嘅問題通常需要時間解決，而唔係一個晚上。你嘅健康係最重要嘅資產，唔好為錢犧牲佢。',action:'想像將財務煩惱放喺一個文件夾入面，標籤「聽日處理」，然後放埋一邊。'},
+    {id:'money-3',reframe:'好多人都面對緊類似嘅壓力，你唔係一個人。一步一步嚟，今晚嘅任務只係休息。',action:'諗一樣唔使錢但令你感到富足嘅嘢——可能係一個關係、一個回憶、一個技能。'}
+  ],
+  '家庭壓力': [
+    {id:'family-1',reframe:'家人嘅說話有時好有重量，但佢哋嘅擔憂往往嚟自關心，只係表達方式唔同。你嘅感受同樣重要。',action:'今晚俾自己一個 break：你唔需要滿足所有人嘅期望，尤其是臨瞓前。'},
+    {id:'family-2',reframe:'家庭關係係長期嘅功課，唔需要一晚解決。你嘅平靜比任何對話都更有價值。',action:'想像喺你同家人之間有一道柔和嘅光牆，保護你今晚嘅休息空間。'},
+    {id:'family-3',reframe:'你嘅人生係屬於你嘅。家人嘅期望可以參考，但你嘅幸福先係終極目標。',action:'寫低一句：「我有權選擇自己嘅節奏。」然後深呼吸，放低。'}
+  ],
+  '學業壓力': [
+    {id:'study-1',reframe:'一條攰嘅大腦吸收唔到任何嘢。與其夾硬繼續，不如俾自己真正休息，聽日效率會更高。',action:'閂晒所有 notes，今晚嘅任務係 sleep。知識會喺你瞓覺嘅時候自己整理。'},
+    {id:'study-2',reframe:'你嘅價值唔係由分數定義嘅。盡咗力嘅你，已經值得尊重。',action:'諗一樣你學到而唔關考試事嘅嘢——可能係一個概念、一個技能、一個領悟。'},
+    {id:'study-3',reframe:'學業壓力好多時係暫時嘅，但你嘅心理健康係長期嘅。唔好為短期目標犧牲長期健康。',action:'合埋眼，想像你畢咗業之後嘅自己回頭望呢一刻——佢會同你講「冇事嘅，你做到」。'}
+  ],
+  'general': [
+    {id:'gen-1',reframe:'今晚唔需要解決所有問題。你嘅任務只係安全、平靜咁渡過呢個晚上。',action:'深呼吸 3 次，每一次呼氣嘅時候想像將一個煩惱放出身體。'},
+    {id:'gen-2',reframe:'煩惱喺夜晚睇落總係更大。俾自己 permission to rest——你值得。',action:'試下喺心入面數 10 樣令你感恩嘅小事，幾簡單都得。'},
+    {id:'gen-3',reframe:'你已經捱過咗好多你以為過唔到嘅日子。今晚都一樣會過。',action:'將手放喺心口，感受心跳，同自己講：「我喺度，我安全，我放鬆。」'}
+  ]
+};
+
 /* ════════════════════════ LOCAL STORAGE ════════════════════════ */
 function saveEntries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));}
 function loadEntries(){
@@ -757,7 +906,16 @@ function renderDumpEntries(){
     el.setAttribute('ontouchstart','swipeStart(event,this)');el.setAttribute('ontouchend','swipeEnd(event,this)');
     var catBadge=e.category?'<span class="dr-cat cat-'+categoryCSSClass(e.category)+'">#'+e.category+'</span>':'';
     var moodTag=e.mood?'<span class="dr-mood">'+e.mood+'</span>':'';
-    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+' '+catBadge+'</div><div class="dr-time">'+e.date+' '+e.time+moodTag+'</div></div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;dump&apos;)">刪除</div>';
+    var reframeHTML='';
+    if(e.reframe&&e.reframe.reframe){
+      reframeHTML='<div class="reframe-section collapsed" id="rf-'+e.id+'">'+
+        '<div class="reframe-badge" onclick="event.stopPropagation();toggleReframe('+e.id+')">💡 試下咁睇…</div>'+
+        '<div class="reframe-body" style="display:none">'+
+        '<div class="rf-text">'+e.reframe.reframe+'</div>'+
+        '<div class="rf-action"><span class="rf-icon">🌿</span><span>'+e.reframe.action+'</span></div>'+
+        '</div></div>';
+    }
+    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+' '+catBadge+'</div><div class="dr-time">'+e.date+' '+e.time+moodTag+'</div>'+reframeHTML+'</div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;dump&apos;)">刪除</div>';
     c.appendChild(el);
   });updateRecordCounts();
 }
@@ -1263,6 +1421,167 @@ function checkAutoReview(){
   var today=new Date().toISOString().slice(0,10);
   if(distinctDates>=7&&lastReview!==today)renderSentimentBlock();
 }
+
+/* ════════════════════════ REFRAME: ENGINE ════════════════════════ */
+
+/* ── Daily limit helpers ── */
+function getReframeDailyCount(){
+  var raw=localStorage.getItem(REFRAME_STORAGE_DAILY);
+  if(!raw)return 0;
+  try{
+    var data=JSON.parse(raw);
+    var today=new Date().toISOString().slice(0,10);
+    if(data.date!==today)return 0;
+    return data.count||0;
+  }catch(e){return 0;}
+}
+function incrementReframeDaily(){
+  var today=new Date().toISOString().slice(0,10);
+  var count=getReframeDailyCount()+1;
+  localStorage.setItem(REFRAME_STORAGE_DAILY,JSON.stringify({date:today,count:count}));
+  return count;
+}
+
+/* ── Used-template tracker (FIFO, max 5) ── */
+function getReframeUsed(){
+  var raw=localStorage.getItem(REFRAME_STORAGE_USED);
+  if(!raw)return[];
+  try{return JSON.parse(raw);}catch(e){return[];}
+}
+function markReframeUsed(id){
+  var used=getReframeUsed();
+  var idx=used.indexOf(id);
+  if(idx>=0)used.splice(idx,1);
+  used.unshift(id);
+  if(used.length>REFRAME_USED_MAX)used=used.slice(0,REFRAME_USED_MAX);
+  localStorage.setItem(REFRAME_STORAGE_USED,JSON.stringify(used));
+}
+
+/* ── Theme extraction: regex match with long→short priority within each theme, then theme priority order ── */
+function extractTheme(text){
+  for(var ti=0;ti<THEME_PRIORITY_ORDER.length;ti++){
+    var theme=THEME_PRIORITY_ORDER[ti];
+    var kwList=THEME_KEYWORDS[theme];
+    if(!kwList)continue;
+    for(var ki=0;ki<kwList.length;ki++){
+      if(text.toLowerCase().indexOf(kwList[ki].toLowerCase())>=0){
+        return theme;
+      }
+    }
+  }
+  return 'general';
+}
+
+/* ── Template selection: pick unused variant, fallback if all used ── */
+function pickReframeTemplate(theme){
+  var pool=REFRAME_TEMPLATES[theme]||REFRAME_TEMPLATES['general'];
+  if(!pool||pool.length===0)return null;
+  var used=getReframeUsed();
+  var fresh=[];
+  for(var i=0;i<pool.length;i++){
+    if(used.indexOf(pool[i].id)<0)fresh.push(pool[i]);
+  }
+  var pick=null;
+  if(fresh.length>0){
+    pick=fresh[Math.floor(Math.random()*fresh.length)];
+  }else{
+    pick=pool[Math.floor(Math.random()*pool.length)];
+  }
+  if(pick)markReframeUsed(pick.id);
+  return pick;
+}
+
+/* ── Gate: should we show reframe for this entry? ── */
+function shouldTriggerReframe(entry,cls){
+  if(!entry||entry.type!=='dump')return false;
+  var sentiment=cls?cls.sentiment:(entry.sentimentLabel||'');
+  var category=cls?cls.category:(entry.category||'');
+  if(sentiment!=='負面情緒'&&category!=='未解決煩惱')return false;
+  if(getReframeDailyCount()>=REFRAME_DAILY_MAX)return false;
+  return true;
+}
+
+/* ── Compose full reframe: theme extract + template pick + attach ── */
+function composeReframe(entry,cls){
+  if(!shouldTriggerReframe(entry,cls))return null;
+  var theme=extractTheme(entry.text);
+  var tpl=pickReframeTemplate(theme);
+  if(!tpl)return null;
+  incrementReframeDaily();
+  return {
+    theme:theme,
+    reframe:tpl.reframe,
+    action:tpl.action,
+    templateId:tpl.id
+  };
+}
+
+/* ── Called after async classify to attach reframe ── */
+function maybeShowReframe(entry,cls){
+  if(!entry||!cls||entry.reframe)return;
+  var reframe=composeReframe(entry,cls);
+  if(!reframe)return;
+  entry.reframe=reframe;
+  saveEntries();
+  renderDumpEntries();
+}
+
+/* ── Override classifyAndAttach to also call maybeShowReframe ── */
+var _origClassifyAndAttach=classifyAndAttach;
+classifyAndAttach=async function(entry){
+  if(entry.type!=='dump')return;
+  try{
+    var cls=await classifyEntry(entry.text);
+    entry.category=cls.category;
+    entry.sentimentLabel=cls.sentiment;
+    saveEntries();
+    renderDumpEntries();
+    updateRecordCounts();
+    if(!entry.reframe)maybeShowReframe(entry,cls);
+  }catch(e){
+    console.warn('Auto-classify failed for entry',entry.id,e);
+  }
+};
+
+/* ── Toggle reframe expand/collapse ── */
+function toggleReframe(id){
+  var section=document.getElementById('rf-'+id);
+  if(!section)return;
+  var body=section.querySelector('.reframe-body');
+  var badge=section.querySelector('.reframe-badge');
+  if(section.classList.contains('collapsed')){
+    section.classList.remove('collapsed');
+    section.classList.add('expanded');
+    if(body)body.style.display='block';
+    if(badge)badge.textContent='💡 收返';
+  }else{
+    section.classList.remove('expanded');
+    section.classList.add('collapsed');
+    if(body)body.style.display='none';
+    if(badge)badge.textContent='💡 試下咁睇…';
+  }
+}
+
+/* ════════════════════════ REFRAME: DEBUG COMMANDS ════════════════════════ */
+window.resetReframeDaily=function(){
+  localStorage.removeItem('slumber_reframe_daily');
+  console.log('✅ Reframe daily count reset — 可以再觸發 '+REFRAME_DAILY_MAX+' 次');
+};
+window.showReframeState=function(){
+  var daily=JSON.parse(localStorage.getItem('slumber_reframe_daily')||'{}');
+  var used=JSON.parse(localStorage.getItem('slumber_reframe_used')||'[]');
+  var today=new Date().toISOString().slice(0,10);
+  console.log('📊 Reframe State:');
+  console.log('  今日已觸發:', (daily.date===today?daily.count:0)||0, '/', REFRAME_DAILY_MAX);
+  console.log('  日期:', daily.date||'N/A');
+  console.log('  最近用過 templates:', used);
+};
+window.setReframeCount=function(n){
+  var today=new Date().toISOString().slice(0,10);
+  localStorage.setItem('slumber_reframe_daily',JSON.stringify({date:today,count:n}));
+  console.log('✅ Reframe count set to', n, '/', REFRAME_DAILY_MAX);
+};
+
 function seedTestData(days){
   clearAllEntries();
   var texts=[{t:'今日做晒所有嘢，心情好輕鬆',m:'😌 放鬆'},{t:'聽日個會壓力好大，瞓唔著',m:'😰 緊張'},{t:'同朋友食飯好開心',m:'😊 開心'},{t:'OT 到好晏，好攰',m:'😴 好攰'},{t:'同事又冇交功課，好煩',m:'😤 煩躁'},{t:'今日效率好高，滿意',m:'😌 放鬆'},{t:'周末可以唞下，感恩',m:'😊 開心'}];
