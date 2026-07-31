@@ -1127,10 +1127,24 @@ function updateSentimentProgress(msg,pct){
   var safePct=Math.max(0,Math.min(100,Math.round(pct)));
   bar.style.display='block';bar.querySelector('.sp-text').textContent=msg;
   bar.querySelector('.sp-fill').style.width=safePct+'%';
-  if(safePct>=100)setTimeout(function(){bar.style.display='none';},600);
+  if(safePct>=100){
+    // Minimum 800ms display — defer hide if progress was too fast
+    if(window._srProgressStartTime){
+      var elapsed=Date.now()-window._srProgressStartTime;
+      if(elapsed<800){
+        setTimeout(function(){updateSentimentProgress(msg,100);},800-elapsed+50);
+        return;
+      }
+    }
+    window._srProgressStartTime=0;
+    setTimeout(function(){bar.style.display='none';},600);
+  }else{
+    if(!window._srProgressStartTime)window._srProgressStartTime=Date.now();
+  }
 }
 /* ═══════ Unified Zero-Shot Pipeline (mDeBERTa) ═══════ */
 var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false,_zsRafPending=false;
+var _zsFirstPaintTime=0,_zsMinDisplayTimer=null;
 async function getZeroShotPipeline(){
   if(zeroShotPipeline)return zeroShotPipeline;
   if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
@@ -1159,17 +1173,29 @@ async function getZeroShotPipeline(){
       }
     });
     zeroShotPipeline=pipe;zeroShotPreloaded=true;
-    _zsLoadPct=100;_zsLoadMsg='';_zsBrandedBuilt=false;renderBrandedLoading();
+    _zsLoadPct=100;_zsLoadMsg='';_zsBrandedBuilt=false;
+    // Minimum 800ms display — keep loading screen visible if too fast
+    var elapsed=Date.now()-_zsFirstPaintTime;
+    if(elapsed<800){
+      var remaining=800-elapsed;
+      _zsMinDisplayTimer=setTimeout(function(){_zsMinDisplayTimer=null;renderSentimentBlock();},remaining);
+      // Still call renderBrandedLoading to show 100% progress
+      renderBrandedLoading();
+    }else{
+      renderBrandedLoading();
+    }
     return pipe;
   }catch(e){zeroShotLoading=false;throw e;}
 }
 function renderBrandedLoading(){
   var body=document.getElementById('srBody');if(!body)return;
-  if(zeroShotPreloaded){renderSentimentBlock();return;}
-  if(zeroShotLoading){
+  // If model loaded AND minimum display timer has fired (switched to renderSentimentBlock), skip
+  if(zeroShotPreloaded&&!_zsMinDisplayTimer){renderSentimentBlock();return;}
+  if(zeroShotLoading||zeroShotPreloaded){
     if(!_zsBrandedBuilt||!document.getElementById('zsBarFill')){
       // First paint: build full structure once
       _zsBrandedBuilt=true;
+      _zsFirstPaintTime=Date.now();
       body.innerHTML='<div id="zsBrandedWrap" style="text-align:center;padding:12px 0">'+
         '<div style="font-size:32px;margin-bottom:8px">🧠</div>'+
         '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:6px">AI 引擎啟動中</div>'+
@@ -1182,7 +1208,7 @@ function renderBrandedLoading(){
     }
     // Atomic DOM updates — no flicker
     var fill=document.getElementById('zsBarFill');if(fill)fill.style.width=_zsLoadPct+'%';
-    var msg=document.getElementById('zsBarMsg');if(msg)msg.textContent=_zsLoadMsg;
+    var msg=document.getElementById('zsBarMsg');if(msg)msg.textContent=_zsLoadMsg||'正在初始化…';
   }
 }
 async function getSentimentPipeline(){
