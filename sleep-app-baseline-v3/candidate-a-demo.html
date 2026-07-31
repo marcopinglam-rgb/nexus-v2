@@ -281,6 +281,8 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .sr-banner{margin-top:8px;padding:10px 14px;background:rgba(107,125,184,.06);border:1px solid rgba(107,125,184,.15);
   border-radius:var(--radius-pill);font-size:12px;color:var(--accent);cursor:pointer;text-align:center}
 .sr-progress{margin-top:10px}
+.sr-result{margin-top:12px;padding:14px 16px;background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.1);border-radius:var(--radius);font-size:13px;line-height:1.7;color:var(--text2)}
+.sr-result .sr-narrative{font-size:13px;line-height:1.8;margin-bottom:8px}
 .sp-text{font-size:11px;color:var(--text2);margin-bottom:4px}
 .sp-bar{height:4px;background:var(--card-border);border-radius:2px;overflow:hidden}
 .sp-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
@@ -355,6 +357,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
     <div class="sr-card">
       <div class="sr-header"><span class="sr-icon">🧠</span><span class="sr-title">AI 情緒回顧</span></div>
       <div class="sr-body" id="srBody"></div>
+      <div class="sr-result" id="srResult" style="display:none"></div>
       <div class="sr-progress" id="sentimentProgress" style="display:none">
         <div class="sp-text">正在載入 AI 模型…</div>
         <div class="sp-bar"><div class="sp-fill" style="width:0%"></div></div>
@@ -952,84 +955,57 @@ function buildSentimentReport(results){
 async function triggerSentimentReview(){
   var dumps=entries.filter(function(e){return e.type==='dump';});
   if(dumps.length===0){toast('仲未有任何記錄','secondary');return;}
-  showCustomModal('<div style="text-align:center;padding:24px"><div style="font-size:32px;margin-bottom:12px">⏳</div><div style="font-size:14px;font-weight:600;margin-bottom:8px">正在分析你嘅情緒變化…</div><div id="modalProgress" style="font-size:12px;color:var(--text2)">準備中…</div></div>');
-  var origUpdate=updateSentimentProgress;
-  updateSentimentProgress=function(msg,pct){
-    var el=document.getElementById('modalProgress');if(el)el.textContent=msg+' ('+Math.round(pct)+'%)';
-    var bar=document.getElementById('sentimentProgress');
-    if(bar){bar.style.display='block';var sp=Math.max(0,Math.min(100,Math.round(pct)));bar.querySelector('.sp-fill').style.width=sp+'%';}
-  };
+  // Show loading inline
+  var body=document.getElementById('srBody');if(body)body.innerHTML='<div style="text-align:center;padding:12px;color:var(--text2)">⏳ 正在分析你嘅情緒變化…</div>';
+  var res=document.getElementById('srResult');if(res){res.style.display='none';res.innerHTML='';}
   try{
     var report=await analyzeSentiment();
-    if(!report){closeModalDirect();toast('分析失敗，請再試一次');return;}
-    // Attach narrative before saving to history
-    var dumps=entries.filter(function(e){return e.type==='dump';});
+    if(!report){toast('分析失敗，請再試一次');renderSentimentBlock();return;}
     var counts={positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)};
     var dailyMap=report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{});
     report.narrative=generateNarrative(counts,dailyMap,dumps.map(function(){return{label:report.dominant};}));
-    showSentimentResult(report);
+    showInlineResult(report);
     var today=new Date().toISOString().slice(0,10);localStorage.setItem(REVIEW_KEY,today);
-    // Duplicate check: only save if dump data changed since last review
     var fingerprint=JSON.stringify(dumps.map(function(e){return e.text+e.date;}).sort())+'|'+dumps.length;
     var history=loadReviewHistory();
     if(history.length===0||history[0].fingerprint!==fingerprint){
-      report.fingerprint=fingerprint;
-      saveReviewToHistory(report);
+      report.fingerprint=fingerprint;saveReviewToHistory(report);
     }
     renderSentimentBlock();
-  }catch(e){closeModalDirect();toast('載入失敗：'+e.message);sentimentLoading=false;}
-  updateSentimentProgress=origUpdate;
+  }catch(e){toast('載入失敗：'+e.message);sentimentLoading=false;renderSentimentBlock();}
+}
+function showInlineResult(report){
+  var posW=report.positivePct,neuW=report.neutralPct,negW=report.negativePct;
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  var dates=new Set(dumps.map(function(e){return e.date;}));
+  var html='';
+  if(report.narrative){html+='<div class="sr-narrative">'+report.narrative+'</div>';}
+  html+='<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">📊 情緒分佈 ('+dates.size+' 日 · '+dumps.length+' 個想法)</div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😊</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+posW+'%;background:#6b7db8"></div></div><span class="sr-bar-val">'+posW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😐</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+neuW+'%;background:#8890a8"></div></div><span class="sr-bar-val">'+neuW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😟</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+negW+'%;background:#885068"></div></div><span class="sr-bar-val">'+negW+'%</span></div></div>';
+  html+='<div style="text-align:center;font-size:11px;color:var(--text3);margin-top:6px">🌙 每晚寫低雜念，就係送俾自己最好嘅禮物</div>';
+  var res=document.getElementById('srResult');
+  if(res){res.innerHTML=html;res.style.display='block';}
+  window._latestReport=report;
 }
 function generateNarrative(counts,daily,results){
   var total=counts.positive+counts.neutral+counts.negative;
   var posPct=Math.round(counts.positive/total*100);
   var dates=Object.keys(daily).sort();
-  var dominantEmoji=counts.positive>=counts.negative?'😊':'😟';
-  // Count days with stress-related entries
   var stressDays=0;results.forEach(function(r){if(r.label.toLowerCase()==='negative')stressDays++;});
-  // Build flowing narrative
   var narrative='';
   if(dates.length===1){
     narrative='今日你記錄咗 '+total+' 個想法，整體感覺'+(posPct>=60?'幾好，繼續保持呢份平靜 🌙':'有啲起伏，不過每個晚上都係新開始 💛')+'。';
   }else{
     narrative='過去 '+dates.length+' 日你總共記錄咗 '+total+' 個想法。';
-    if(posPct>=60){
-      narrative+='大部分時間你嘅情緒都偏向放鬆，睇得出你開始掌握到自己嘅節奏。';
-    }else if(counts.negative>counts.positive){
-      narrative+='呢排你可能面對較多壓力，但留意到你仍然堅持每晚寫低雜念 —— 呢個習慣本身就係一種自我照顧 🌱。';
-    }else{
-      narrative+='情緒有高有低，好正常。你喺忙碌之中仍然為自己留低記錄嘅空間，呢點好重要。';
-    }
-    if(stressDays>=3){
-      narrative+=' 其中有 '+stressDays+' 晚提到壓力相關嘅事，但感覺你每次寫完之後都有釋放，聽落你已經開始搵到自己嘅節奏。';
-    }
-    if(dates.length>=5){
-      narrative+=' 連續記錄嘅習慣本身就係一種進步 —— 你比自己想像中更有韌性 💪。';
-    }
+    if(posPct>=60){narrative+='大部分時間你嘅情緒都偏向放鬆，睇得出你開始掌握到自己嘅節奏。';}
+    else if(counts.negative>counts.positive){narrative+='呢排你可能面對較多壓力，但留意到你仍然堅持每晚寫低雜念 —— 呢個習慣本身就係一種自我照顧 🌱。';}
+    else{narrative+='情緒有高有低，好正常。你喺忙碌之中仍然為自己留低記錄嘅空間，呢點好重要。';}
+    if(stressDays>=3){narrative+=' 其中有 '+stressDays+' 晚提到壓力相關嘅事，但感覺你每次寫完之後都有釋放，聽落你已經開始搵到自己嘅節奏。';}
+    if(dates.length>=5){narrative+=' 連續記錄嘅習慣本身就係一種進步 —— 你比自己想像中更有韌性 💪。';}
   }
   return narrative;
-}
-function showSentimentResult(report){
-  var narrative=generateNarrative(
-    {positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)},
-    report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{}),
-    report.dailyBreakdown.flatMap(function(d){return d.counts.entries.map(function(){return{label:report.dominant};});})
-  );
-  // Rebuild with full results
-  var dumps=entries.filter(function(e){return e.type==='dump';});
-  var dates=new Set(dumps.map(function(e){return e.date;}));
-  var stressCount=0;
-  var html='<div style="text-align:center;padding:8px 0 20px">'+
-    '<div style="font-size:32px;margin-bottom:8px">🧠</div>'+
-    '<div style="font-size:16px;font-weight:700;margin-bottom:4px">情緒回顧</div>'+
-    '<div style="font-size:11px;color:var(--text3)">'+dates.size+' 日 · '+dumps.length+' 個想法</div>'+
-    '</div>'+
-    '<div style="background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.08);border-radius:var(--radius);padding:18px 16px;margin-bottom:16px;font-size:14px;line-height:1.8;color:var(--text2)">'+
-    narrative+
-    '</div>'+
-    '<div style="text-align:center;font-size:12px;color:var(--text3);margin-bottom:16px">每晚寫低雜念，就係送俾自己最好嘅禮物 🌙</div>'+
-    '<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
-  showCustomModal(html);
 }
 function saveReviewToHistory(report){
   var history=loadReviewHistory();
