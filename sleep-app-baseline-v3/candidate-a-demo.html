@@ -11,6 +11,7 @@
 <script type="module">
   import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/+esm';
   window.transformersPipeline = pipeline;
+  window._tfReady = true;
 </script>
 <style>
 :root {
@@ -1254,8 +1255,12 @@ window.seedTestData=seedTestData;window.clearAllEntries=clearAllEntries;
 
 /* ════════════════════════ INIT ════════════════════════ */
 loadEntries();seedPlaceholders();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
-/* Background preload: start zero-shot model download immediately */
-if(USE_UNIFIED_MODEL){setTimeout(function(){getZeroShotPipeline().catch(function(e){console.warn('Zero-shot preload failed:',e);});},100);}
+/* Background preload: wait for CDN module, then start zero-shot model download */
+if(USE_UNIFIED_MODEL){
+  var _tfPoll=setInterval(function(){
+    if(window._tfReady){clearInterval(_tfPoll);getZeroShotPipeline().catch(function(e){console.warn('Zero-shot preload failed:',e);});}
+  },100);
+}
 </script>
 </body>
 </html>
