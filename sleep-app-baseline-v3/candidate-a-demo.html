@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Slumber — Candidate A: Interactive Demo</title>
+<script type="module">
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/+esm';
+  window.transformersPipeline = pipeline;
+</script>
 <style>
 :root {
   --bg:#0a0e18;--bg2:#101420;--text:#e0e4ee;--text2:#8890a8;
@@ -265,6 +269,27 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
   border-radius:var(--radius-pill);text-align:center;font-weight:600;cursor:pointer}
 .add-sleep-form .btn-save:active{opacity:.8}
 
+/* ══════════════════════════════ SENTIMENT REVIEW ══════════════════════════════ */
+.sentiment-review{margin-bottom:16px}
+.sr-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px 18px}
+.sr-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sr-icon{font-size:18px}.sr-title{font-size:14px;font-weight:600}
+.sr-body{font-size:12px;color:var(--text2);line-height:1.6}
+.sr-btn{display:inline-block;margin-top:10px;padding:10px 20px;border-radius:22px;font-size:13px;font-weight:600;
+  cursor:pointer;background:rgba(107,125,184,.12);border:1.5px solid rgba(107,125,184,.2);color:var(--accent);transition:all .15s}
+.sr-btn:hover{background:rgba(107,125,184,.2)}.sr-btn:active{transform:scale(.96)}
+.sr-banner{margin-top:8px;padding:10px 14px;background:rgba(107,125,184,.06);border:1px solid rgba(107,125,184,.15);
+  border-radius:var(--radius-pill);font-size:12px;color:var(--accent);cursor:pointer;text-align:center}
+.sr-progress{margin-top:10px}
+.sp-text{font-size:11px;color:var(--text2);margin-bottom:4px}
+.sp-bar{height:4px;background:var(--card-border);border-radius:2px;overflow:hidden}
+.sp-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+.sr-bar-row{display:flex;align-items:center;gap:4px;margin-bottom:4px}
+.sr-bar-label{font-size:11px;width:40px}
+.sr-bar-track{flex:1;height:18px;background:var(--card-border);border-radius:9px;overflow:hidden}
+.sr-bar-fill{height:100%;border-radius:9px;transition:width .5s}
+.sr-bar-val{font-size:10px;color:var(--text2);min-width:32px}
+
 /* ══════════════════════════════ SCROLLBAR ══════════════════════════════ */
 .page::-webkit-scrollbar{width:3px}
 .page::-webkit-scrollbar-track{background:transparent}
@@ -325,6 +350,17 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 
 <!-- ════════════════════════ RECORD PAGE ════════════════════════ -->
 <div class="page" id="brain-dump">
+  <!-- Sentiment Review Block -->
+  <div class="sentiment-review" id="sentimentReview">
+    <div class="sr-card">
+      <div class="sr-header"><span class="sr-icon">🧠</span><span class="sr-title">AI 情緒回顧</span></div>
+      <div class="sr-body" id="srBody"></div>
+      <div class="sr-progress" id="sentimentProgress" style="display:none">
+        <div class="sp-text">正在載入 AI 模型…</div>
+        <div class="sp-bar"><div class="sp-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
   <div class="record-section-title">💭 雜念記錄 <span style="font-weight:400;font-size:10px" id="dumpCount">(2)</span></div>
   <div class="dump-list" id="dumpDisplay">
     <div class="dump-row" ontouchstart="swipeStart(event,this)" ontouchend="swipeEnd(event,this)">
@@ -508,6 +544,31 @@ var composing=false,hasContent=false,recording=false,breathing=false;
 var breathTimer=null,breathPhase=0;
 var currentStep=1;
 var heroState={wake:false,sleep:false};
+var STORAGE_KEY='slumber_entries_v1',REVIEW_KEY='slumber_last_review';
+var entries=[];
+var sentimentPipeline=null,sentimentLoading=false;
+window._lastMood=null;
+
+/* ════════════════════════ LOCAL STORAGE ════════════════════════ */
+function saveEntries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));}
+function loadEntries(){
+  var raw=localStorage.getItem(STORAGE_KEY);
+  if(raw){try{entries=JSON.parse(raw);}catch(e){entries=[];}}
+  return entries;
+}
+function clearAllEntries(){entries=[];localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(REVIEW_KEY);}
+function fmtDate(base,offset){var d=new Date(base);d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10);}
+function seedPlaceholders(){
+  if(entries.length>0)return;
+  var now=new Date();
+  entries=[
+    {id:1,type:'dump',icon:'💭',text:'聽日個 presentation 仲有幾頁未整完',time:'22:45',date:fmtDate(now,-1),mood:'😰 緊張'},
+    {id:2,type:'dump',icon:'💭',text:'今日同同事傾偈諗到個新方向',time:'21:30',date:fmtDate(now,-2),mood:'😊 開心'},
+    {id:3,type:'checkpoint',icon:'🌙',text:'準備入睡 · 感覺：有啲攰但仲有少少精神',time:'23:30',date:fmtDate(now,-1),mood:null},
+    {id:4,type:'checkpoint',icon:'☀️',text:'起身 · 感覺：OK，瞓得幾好',time:'07:15',date:fmtDate(now,0),mood:null},
+  ];
+  saveEntries();
+}
 
 /* ════════════════════════ CLOCK ════════════════════════ */
 function updateClock(){
@@ -586,22 +647,18 @@ function stopVoice(){
 }
 
 function addDumpEntry(txt){
-  var d=document.getElementById('dumpDisplay');
   var now=new Date();
+  var dateStr=now.toISOString().slice(0,10);
   var timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  var el=document.createElement('div');
-  el.className='dump-row';
-  el.setAttribute('ontouchstart','swipeStart(event,this)');
-  el.setAttribute('ontouchend','swipeEnd(event,this)');
-  el.innerHTML='<div class="dr-icon">💭</div><div class="dr-text"><div>'+txt+'</div><div class="dr-time">'+timeStr+'</div></div><div class="dr-delete" onclick="deleteEntry(this.parentElement,\'dump\')">刪除</div>';
-  d.insertBefore(el,d.firstChild);
-  updateRecordCounts();
+  var mood=window._lastMood||null;window._lastMood=null;
+  var entry={id:Date.now(),type:'dump',icon:'💭',text:txt,time:timeStr,date:dateStr,mood:mood};
+  entries.unshift(entry);saveEntries();
+  renderDumpEntries();
   hasContent=true;
   document.getElementById('barText').textContent=txt;
   document.getElementById('barHint').style.display='none';
   document.getElementById('overlayBar').classList.add('has-content');
-  // Flash new entry
-  setTimeout(function(){el.style.opacity='0.4';setTimeout(function(){el.style.opacity=''},200)},50);
+  checkAutoReview();
 }
 
 function clearBar(){
@@ -627,19 +684,40 @@ function deleteEntry(row,type){
   row.style.transform='translateX(120%)';row.style.opacity='0';
   setTimeout(function(){row.remove();updateRecordCounts();toast('🗑️ 已刪除')},200);
 }
-
+function deleteEntryById(id,type){
+  entries=entries.filter(function(e){return e.id!==id;});saveEntries();
+  if(type==='dump')renderDumpEntries();else renderCheckpointEntries();
+  toast('🗑️ 已刪除');renderSentimentBlock();
+}
 function updateRecordCounts(){
-  var dc=document.getElementById('dumpDisplay').children.length;
-  var cc=document.getElementById('checkpointDisplay').children.length;
-  var dcEl=document.getElementById('dumpCount');
-  var ccEl=document.getElementById('cpCount');
-  if(dcEl)dcEl.textContent='('+dc+')';
-  if(ccEl)ccEl.textContent='('+cc+')';
-  // Badge
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  var cps=entries.filter(function(e){return e.type==='checkpoint';});
+  var dcEl=document.getElementById('dumpCount'),ccEl=document.getElementById('cpCount');
+  if(dcEl)dcEl.textContent='('+dumps.length+')';
+  if(ccEl)ccEl.textContent='('+cps.length+')';
   var recNav=document.querySelector('.nav-item[data-page="brain-dump"]');
-  if(recNav){if(dc>0)recNav.classList.add('has-badge');else recNav.classList.remove('has-badge')}
-  // Empty state
-  if(dc===0){var es=document.getElementById('dumpDisplay');es.innerHTML='<div class="empty-state"><div class="es-icon">💭</div>仲未有雜念記錄<br>撳底部 ➕ 開始寫低</div>'}
+  if(recNav){if(dumps.length>0)recNav.classList.add('has-badge');else recNav.classList.remove('has-badge');}
+}
+function renderDumpEntries(){
+  var c=document.getElementById('dumpDisplay');c.innerHTML='';
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  if(dumps.length===0){c.innerHTML='<div class="empty-state"><div class="es-icon">💭</div>仲未有雜念記錄<br>撳底部 ➕ 開始寫低</div>';updateRecordCounts();return;}
+  dumps.forEach(function(e){
+    var el=document.createElement('div');el.className='dump-row';
+    el.setAttribute('ontouchstart','swipeStart(event,this)');el.setAttribute('ontouchend','swipeEnd(event,this)');
+    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+'</div><div class="dr-time">'+e.date+' '+e.time+'</div></div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;dump&apos;)">刪除</div>';
+    c.appendChild(el);
+  });updateRecordCounts();
+}
+function renderCheckpointEntries(){
+  var c=document.getElementById('checkpointDisplay');c.innerHTML='';
+  var cps=entries.filter(function(e){return e.type==='checkpoint';});
+  cps.forEach(function(e){
+    var el=document.createElement('div');el.className='dump-row';
+    el.setAttribute('ontouchstart','swipeStart(event,this)');el.setAttribute('ontouchend','swipeEnd(event,this)');
+    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+'</div><div class="dr-time">'+e.date+' '+e.time+'</div></div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;cp&apos;)">刪除</div>';
+    c.appendChild(el);
+  });
 }
 
 /* ════════════════════════ HERO CARD ACTIONS ════════════════════════ */
@@ -662,16 +740,12 @@ function heroAction(type){
 }
 
 function addCheckpointEntry(icon,txt){
-  var d=document.getElementById('checkpointDisplay');
   var now=new Date();
+  var dateStr=now.toISOString().slice(0,10);
   var timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  var el=document.createElement('div');
-  el.className='dump-row';
-  el.setAttribute('ontouchstart','swipeStart(event,this)');
-  el.setAttribute('ontouchend','swipeEnd(event,this)');
-  el.innerHTML='<div class="dr-icon">'+icon+'</div><div class="dr-text"><div>'+txt+'</div><div class="dr-time">'+timeStr+'</div></div><div class="dr-delete" onclick="deleteEntry(this.parentElement,\'cp\')">刪除</div>';
-  d.insertBefore(el,d.firstChild);
-  updateRecordCounts();
+  var entry={id:Date.now(),type:'checkpoint',icon:icon,text:txt,time:timeStr,date:dateStr,mood:null};
+  entries.unshift(entry);saveEntries();
+  renderCheckpointEntries();
 }
 
 /* ════════════════════════ GOAL EDITOR ════════════════════════ */
@@ -788,6 +862,7 @@ function closeModalDirect(){document.getElementById('modalOverlay').classList.re
 function selectMood(el,label){
   document.querySelectorAll('#moodChips .mood-chip').forEach(function(c){c.classList.remove('active')});
   el.classList.add('active');
+  window._lastMood=label;
   toast('😌 心情已記錄：'+label,'secondary');
 }
 
@@ -809,8 +884,126 @@ function toast(msg,type){
   setTimeout(function(){el.remove()},2400);
 }
 
+/* ════════════════════════ SENTIMENT REVIEW ════════════════════════ */
+function renderSentimentBlock(){
+  var body=document.getElementById('srBody');if(!body)return;
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  var distinctDates=new Set(dumps.map(function(e){return e.date;})).size;
+  var lastReview=localStorage.getItem(REVIEW_KEY);
+  var today=new Date().toISOString().slice(0,10);
+  if(dumps.length===0){
+    body.innerHTML='<div style="color:var(--text3)">仲未有任何記錄<br>撳 ➕ 開始寫低雜念 🌱</div>';return;
+  }
+  var html='<div style="color:var(--text2)">透過 AI 分析你嘅情緒變化模式</div>';
+  html+='<div class="sr-btn" onclick="triggerSentimentReview()">🧠 生成回顧</div>';
+  if(distinctDates>=7&&lastReview!==today){
+    html+='<div class="sr-banner" onclick="triggerSentimentReview()">🎉 你已記錄滿 7 日！點擊查看情緒回顧 →</div>';
+  }
+  body.innerHTML=html;
+}
+function updateSentimentProgress(msg,pct){
+  var bar=document.getElementById('sentimentProgress');if(!bar)return;
+  bar.style.display='block';bar.querySelector('.sp-text').textContent=msg;
+  bar.querySelector('.sp-fill').style.width=pct+'%';
+  if(pct>=100)setTimeout(function(){bar.style.display='none';},600);
+}
+async function getSentimentPipeline(){
+  if(sentimentPipeline)return sentimentPipeline;
+  if(sentimentLoading){return new Promise(function(r){var c=setInterval(function(){if(sentimentPipeline){clearInterval(c);r(sentimentPipeline);}},200);});}
+  sentimentLoading=true;updateSentimentProgress('正在下載 AI 模型…',10);
+  try{
+    var pipe=await window.transformersPipeline('sentiment-analysis','Xenova/distilbert-base-multilingual-cased-sentiments-student',{progress_callback:function(p){if(p.status==='progress'){var pct=Math.round(10+p.progress*70);updateSentimentProgress('正在載入 AI 模型…',pct);}}});
+    sentimentPipeline=pipe;updateSentimentProgress('模型初始化完成',100);return pipe;
+  }catch(e){sentimentLoading=false;throw e;}
+}
+async function analyzeSentiment(){
+  var dumps=entries.filter(function(e){return e.type==='dump'&&e.text;});
+  if(dumps.length===0)return null;
+  var pipe=await getSentimentPipeline();updateSentimentProgress('正在分析情緒…',85);
+  var results=[];
+  for(var i=0;i<dumps.length;i++){var e=dumps[i];var o=await pipe(e.text);results.push({entry:e,label:o[0].label,score:o[0].score});}
+  updateSentimentProgress('分析完成',100);return buildSentimentReport(results);
+}
+function buildSentimentReport(results){
+  var counts={positive:0,neutral:0,negative:0};
+  var daily={};
+  results.forEach(function(r){
+    var l=r.label.toLowerCase();if(counts[l]!==undefined)counts[l]++;
+    var d=r.entry.date;if(!daily[d])daily[d]={positive:0,neutral:0,negative:0,entries:[],moods:[]};
+    daily[d][l]++;daily[d].entries.push(r.entry);if(r.entry.mood)daily[d].moods.push(r.entry.mood);
+  });
+  var total=results.length;
+  return {
+    total:total,positivePct:Math.round(counts.positive/total*100),neutralPct:Math.round(counts.neutral/total*100),negativePct:Math.round(counts.negative/total*100),
+    dominant:counts.positive>=counts.negative?'positive':'negative',
+    dailyBreakdown:Object.keys(daily).sort().map(function(d){return{date:d,counts:daily[d],entryCount:daily[d].entries.length};}),
+    insights:generateInsights(counts,daily)
+  };
+}
+function generateInsights(counts,daily){
+  var insights=[],total=counts.positive+counts.neutral+counts.negative;
+  var posPct=Math.round(counts.positive/total*100);
+  if(posPct>=60)insights.push('整體情緒偏正面，你嘅心態幾好 👍');
+  else if(counts.negative>counts.positive)insights.push('最近負面情緒較多，記得睡前做呼吸練習放鬆 🧘');
+  var dates=Object.keys(daily).sort();
+  if(dates.length>=3)insights.push('你嘅雜念多數圍繞日常事務，嘗試睡前寫低一件感恩嘅事 💛');
+  if(counts.negative>=3)insights.push('發現有幾日壓力較大，考慮早 30 分鐘開始 wind-down 流程 🌙');
+  return insights;
+}
+async function triggerSentimentReview(){
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  if(dumps.length===0){toast('仲未有任何記錄','secondary');return;}
+  showCustomModal('<div style="text-align:center;padding:24px"><div style="font-size:32px;margin-bottom:12px">⏳</div><div style="font-size:14px;font-weight:600;margin-bottom:8px">正在分析你嘅情緒變化…</div><div id="modalProgress" style="font-size:12px;color:var(--text2)">準備中…</div></div>');
+  var origUpdate=updateSentimentProgress;
+  updateSentimentProgress=function(msg,pct){
+    var el=document.getElementById('modalProgress');if(el)el.textContent=msg+' ('+pct+'%)';
+    var bar=document.getElementById('sentimentProgress');
+    if(bar){bar.style.display='block';bar.querySelector('.sp-fill').style.width=pct+'%';}
+  };
+  try{
+    var report=await analyzeSentiment();
+    if(!report){closeModalDirect();toast('分析失敗，請再試一次');return;}
+    showSentimentResult(report);
+    var today=new Date().toISOString().slice(0,10);localStorage.setItem(REVIEW_KEY,today);
+    renderSentimentBlock();
+  }catch(e){closeModalDirect();toast('載入失敗：'+e.message);sentimentLoading=false;}
+  updateSentimentProgress=origUpdate;
+}
+function showSentimentResult(report){
+  var posW=report.positivePct,neuW=report.neutralPct,negW=report.negativePct;
+  var dailyRows=report.dailyBreakdown.map(function(d){
+    var emoji=d.counts.positive>=d.counts.negative?'😊':'😟';
+    return '<div style="display:flex;gap:8px;padding:6px 0;font-size:11px;border-bottom:1px solid var(--card-border)"><span style="color:var(--text3);min-width:48px">'+d.date.slice(5)+'</span><span>'+emoji+'</span><span style="flex:1;color:var(--text2)">'+d.entryCount+' 條記錄</span></div>';
+  }).join('');
+  var html='<div style="text-align:center;padding:4px 0 16px"><div style="font-size:28px;margin-bottom:4px">🧠</div><div style="font-size:16px;font-weight:700">AI 情緒回顧</div><div style="font-size:12px;color:var(--text2);margin-top:4px">'+(report.dominant==='positive'?'整體趨勢：😊 正面為主':'整體趨勢：😟 負面較多')+' ('+report.total+' 條記錄)</div></div>';
+  html+='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📊 情緒分佈</div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😊</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+posW+'%;background:#6b7db8"></div></div><span class="sr-bar-val">'+posW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😐</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+neuW+'%;background:#8890a8"></div></div><span class="sr-bar-val">'+neuW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😟</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+negW+'%;background:#885068"></div></div><span class="sr-bar-val">'+negW+'%</span></div></div>';
+  if(report.insights.length>0){html+='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">💡 AI 洞察</div>'+report.insights.map(function(i){return'<div style="font-size:12px;color:var(--text2);padding:4px 0;line-height:1.5">'+i+'</div>';}).join('')+'</div>';}
+  html+='<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📅 每日摘要</div>'+dailyRows+'</div>';
+  html+='<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
+  showCustomModal(html);
+}
+function checkAutoReview(){
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  var distinctDates=new Set(dumps.map(function(e){return e.date;})).size;
+  var lastReview=localStorage.getItem(REVIEW_KEY);
+  var today=new Date().toISOString().slice(0,10);
+  if(distinctDates>=7&&lastReview!==today)renderSentimentBlock();
+}
+function seedTestData(days){
+  clearAllEntries();
+  var texts=[{t:'今日做晒所有嘢，心情好輕鬆',m:'😌 放鬆'},{t:'聽日個會壓力好大，瞓唔著',m:'😰 緊張'},{t:'同朋友食飯好開心',m:'😊 開心'},{t:'OT 到好晏，好攰',m:'😴 好攰'},{t:'同事又冇交功課，好煩',m:'😤 煩躁'},{t:'今日效率好高，滿意',m:'😌 放鬆'},{t:'周末可以唞下，感恩',m:'😊 開心'}];
+  var now=new Date();
+  for(var i=0;i<days;i++){var d=new Date(now);d.setDate(d.getDate()-(days-1-i));var ds=d.toISOString().slice(0,10);var t=texts[i%texts.length];entries.push({id:Date.now()+i*10,type:'dump',icon:'💭',text:t.t,time:'22:45',date:ds,mood:t.m});entries.push({id:Date.now()+i*10+1,type:'checkpoint',icon:'🌙',text:'準備入睡',time:'23:30',date:ds,mood:null});}
+  saveEntries();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
+  toast('🧪 已生成 '+days+' 日測試數據');
+}
+window.seedTestData=seedTestData;window.clearAllEntries=clearAllEntries;
+
 /* ════════════════════════ INIT ════════════════════════ */
-updateRecordCounts();
+loadEntries();seedPlaceholders();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
 </script>
 </body>
 </html>
