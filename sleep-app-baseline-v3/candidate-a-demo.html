@@ -544,7 +544,7 @@ var composing=false,hasContent=false,recording=false,breathing=false;
 var breathTimer=null,breathPhase=0;
 var currentStep=1;
 var heroState={wake:false,sleep:false};
-var STORAGE_KEY='slumber_entries_v1',REVIEW_KEY='slumber_last_review';
+var STORAGE_KEY='slumber_entries_v1',REVIEW_KEY='slumber_last_review',REVIEW_HISTORY_KEY='slumber_review_history';
 var entries=[];
 var sentimentPipeline=null,sentimentLoading=false;
 window._lastMood=null;
@@ -894,8 +894,17 @@ function renderSentimentBlock(){
   if(dumps.length===0){
     body.innerHTML='<div style="color:var(--text3)">仲未有任何記錄<br>撳 ➕ 開始寫低雜念 🌱</div>';return;
   }
-  var html='<div style="color:var(--text2)">透過 AI 分析你嘅情緒變化模式</div>';
+  var html='';
+  if(lastReview===today){
+    var now=new Date();
+    var timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    html+='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">📝 上次生成：今日 '+timeStr+'</div>';
+  }
+  html+='<div style="color:var(--text2)">透過 AI 分析你嘅情緒變化模式</div>';
+  html+='<div style="display:flex;gap:8px;margin-top:10px">';
   html+='<div class="sr-btn" onclick="triggerSentimentReview()">🧠 生成回顧</div>';
+  html+='<div class="sr-btn" onclick="showPastReviews()" style="background:rgba(107,125,184,.04);border-color:rgba(107,125,184,.1);color:var(--text2)">📋 歷史回顧</div>';
+  html+='</div>';
   if(distinctDates>=7&&lastReview!==today){
     html+='<div class="sr-banner" onclick="triggerSentimentReview()">🎉 你已記錄滿 7 日！點擊查看情緒回顧 →</div>';
   }
@@ -955,6 +964,7 @@ async function triggerSentimentReview(){
     if(!report){closeModalDirect();toast('分析失敗，請再試一次');return;}
     showSentimentResult(report);
     var today=new Date().toISOString().slice(0,10);localStorage.setItem(REVIEW_KEY,today);
+    saveReviewToHistory(report);
     renderSentimentBlock();
   }catch(e){closeModalDirect();toast('載入失敗：'+e.message);sentimentLoading=false;}
   updateSentimentProgress=origUpdate;
@@ -1008,6 +1018,64 @@ function showSentimentResult(report){
     '</div>'+
     '<div style="text-align:center;font-size:12px;color:var(--text3);margin-bottom:16px">每晚寫低雜念，就係送俾自己最好嘅禮物 🌙</div>'+
     '<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
+  showCustomModal(html);
+}
+function saveReviewToHistory(report){
+  var history=loadReviewHistory();
+  var now=new Date();
+  var ts=now.toISOString();
+  var summary=report.dominant==='positive'?'😊 正面為主':'😟 負面較多';
+  history.unshift({
+    id:Date.now(),
+    timestamp:ts,
+    dateStr:now.toLocaleString('zh-HK',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}),
+    total:report.total,
+    positivePct:report.positivePct,
+    neutralPct:report.neutralPct,
+    negativePct:report.negativePct,
+    dominant:report.dominant,
+    summary:summary,
+    dailyBreakdown:report.dailyBreakdown,
+    narrative:report.narrative||''
+  });
+  if(history.length>20)history=history.slice(0,20);
+  localStorage.setItem(REVIEW_HISTORY_KEY,JSON.stringify(history));
+}
+function loadReviewHistory(){
+  var raw=localStorage.getItem(REVIEW_HISTORY_KEY);
+  if(raw){try{return JSON.parse(raw);}catch(e){return[];}}
+  return[];
+}
+function showPastReviews(){
+  var history=loadReviewHistory();
+  if(history.length===0){toast('仲未有歷史回顧記錄','secondary');return;}
+  var rows=history.map(function(h,i){
+    return'<div class="modal-option" onclick="showPastReviewDetail('+i+')" style="display:flex;justify-content:space-between;align-items:center">'+
+      '<span>'+h.summary+'</span>'+
+      '<span style="font-size:10px;color:var(--text3)">'+h.dateStr+' · '+h.total+' 條</span>'+
+      '</div>';
+  }).join('');
+  var html='<h4>📋 歷史生成回顧</h4>'+rows+
+    '<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
+  showCustomModal(html);
+  window._reviewHistory=history;
+}
+function showPastReviewDetail(idx){
+  var h=window._reviewHistory[idx];
+  if(!h)return;
+  var posW=h.positivePct,neuW=h.neutralPct,negW=h.negativePct;
+  var dailyRows=h.dailyBreakdown.map(function(d){
+    var emoji=d.counts.positive>=d.counts.negative?'😊':'😟';
+    return'<div style="display:flex;gap:8px;padding:6px 0;font-size:11px;border-bottom:1px solid var(--card-border)"><span style="color:var(--text3);min-width:48px">'+d.date.slice(5)+'</span><span>'+emoji+'</span><span style="flex:1;color:var(--text2)">'+d.entryCount+' 條記錄</span></div>';
+  }).join('');
+  var html='<div style="text-align:center;padding:4px 0 16px"><div style="font-size:24px;margin-bottom:4px">🧠</div><div style="font-size:15px;font-weight:700">'+h.summary+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+h.dateStr+' · '+h.total+' 條記錄</div></div>';
+  html+='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📊 情緒分佈</div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😊</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+posW+'%;background:#6b7db8"></div></div><span class="sr-bar-val">'+posW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😐</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+neuW+'%;background:#8890a8"></div></div><span class="sr-bar-val">'+neuW+'%</span></div>';
+  html+='<div class="sr-bar-row"><span class="sr-bar-label">😟</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+negW+'%;background:#885068"></div></div><span class="sr-bar-val">'+negW+'%</span></div></div>';
+  if(h.narrative){html+='<div style="background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.08);border-radius:var(--radius);padding:16px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text2)">'+h.narrative+'</div>';}
+  html+='<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📅 每日摘要</div>'+dailyRows+'</div>';
+  html+='<div class="modal-cancel" onclick="showPastReviews()">← 返回列表</div>';
   showCustomModal(html);
 }
 function checkAutoReview(){
