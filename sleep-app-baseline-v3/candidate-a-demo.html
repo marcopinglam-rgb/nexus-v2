@@ -951,7 +951,7 @@ function updateSentimentProgress(msg,pct){
   if(safePct>=100)setTimeout(function(){bar.style.display='none';},600);
 }
 /* ═══════ Unified Zero-Shot Pipeline (mDeBERTa) ═══════ */
-var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false;
+var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false,_zsRafPending=false;
 async function getZeroShotPipeline(){
   if(zeroShotPipeline)return zeroShotPipeline;
   if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
@@ -960,7 +960,6 @@ async function getZeroShotPipeline(){
   try{
     var pipe=await window.transformersPipeline('zero-shot-classification','Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7',{
       progress_callback:function(p){
-        console.log('[ZS] progress callback:',JSON.stringify(p));
         // Normalise: handle various callback shapes from Transformers.js v3
         var pct=0;var status=p.status||'';
         if(typeof p.progress==='number'){
@@ -974,7 +973,8 @@ async function getZeroShotPipeline(){
         }else if(status==='ready'||status==='done'){
           _zsLoadPct=100;_zsLoadMsg='正在初始化…';
         }
-        renderBrandedLoading();
+        // Schedule visual update via rAF so browser can paint between ticks
+        if(!_zsRafPending){_zsRafPending=true;requestAnimationFrame(function(){_zsRafPending=false;renderBrandedLoading();});}
       }
     });
     zeroShotPipeline=pipe;zeroShotPreloaded=true;
