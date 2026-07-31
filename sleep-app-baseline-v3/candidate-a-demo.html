@@ -1497,9 +1497,17 @@ function shouldTriggerReframe(entry,cls){
   var sentiment=cls?cls.sentiment:(entry.sentimentLabel||'');
   var category=cls?cls.category:(entry.category||'');
   var dailyCount=getReframeDailyCount();
-  if(sentiment!=='負面情緒'&&category!=='未解決煩惱'){console.log('[Reframe] shouldTriggerReframe FALSE — sentiment:',sentiment,'category:',category);return false;}
   if(dailyCount>=REFRAME_DAILY_MAX){console.log('[Reframe] shouldTriggerReframe FALSE — daily limit reached:',dailyCount);return false;}
-  console.log('[Reframe] shouldTriggerReframe TRUE — sentiment:',sentiment,'category:',category,'daily:',dailyCount);
+  // Primary trigger: AI classification
+  var aiTrigger=(sentiment==='負面情緒'||category==='未解決煩惱');
+  // Fallback: keyword-based theme extraction catches what AI misses (e.g. 好攰 → 身體疲累)
+  var theme=extractTheme(entry.text);
+  var kwTrigger=(!aiTrigger && theme!=='general' && sentiment!=='正面情緒');
+  if(!aiTrigger&&!kwTrigger){
+    console.log('[Reframe] shouldTriggerReframe FALSE — sentiment:',sentiment,'category:',category,'theme:',theme);
+    return false;
+  }
+  console.log('[Reframe] shouldTriggerReframe TRUE — sentiment:',sentiment,'category:',category,'theme:',theme,'trigger:',aiTrigger?'AI':'keyword');
   return true;
 }
 
