@@ -1493,11 +1493,13 @@ function pickReframeTemplate(theme){
 
 /* ── Gate: should we show reframe for this entry? ── */
 function shouldTriggerReframe(entry,cls){
-  if(!entry||entry.type!=='dump')return false;
+  if(!entry||entry.type!=='dump'){console.log('[Reframe] shouldTriggerReframe FALSE — invalid entry');return false;}
   var sentiment=cls?cls.sentiment:(entry.sentimentLabel||'');
   var category=cls?cls.category:(entry.category||'');
-  if(sentiment!=='負面情緒'&&category!=='未解決煩惱')return false;
-  if(getReframeDailyCount()>=REFRAME_DAILY_MAX)return false;
+  var dailyCount=getReframeDailyCount();
+  if(sentiment!=='負面情緒'&&category!=='未解決煩惱'){console.log('[Reframe] shouldTriggerReframe FALSE — sentiment:',sentiment,'category:',category);return false;}
+  if(dailyCount>=REFRAME_DAILY_MAX){console.log('[Reframe] shouldTriggerReframe FALSE — daily limit reached:',dailyCount);return false;}
+  console.log('[Reframe] shouldTriggerReframe TRUE — sentiment:',sentiment,'category:',category,'daily:',dailyCount);
   return true;
 }
 
@@ -1518,8 +1520,9 @@ function composeReframe(entry,cls){
 
 /* ── Called after async classify to attach reframe ── */
 function maybeShowReframe(entry,cls){
-  if(!entry||!cls||entry.reframe)return;
+  if(!entry||!cls||entry.reframe){console.log('[Reframe] maybeShowReframe SKIP — entry:',!!entry,'cls:',!!cls,'already has reframe:',!!entry.reframe);return;}
   var reframe=composeReframe(entry,cls);
+  console.log('[Reframe] maybeShowReframe — composeReframe result:',reframe?'HIT theme='+reframe.theme:'NULL (not triggered)');
   if(!reframe)return;
   entry.reframe=reframe;
   saveEntries();
@@ -1537,6 +1540,7 @@ classifyAndAttach=async function(entry){
     saveEntries();
     renderDumpEntries();
     updateRecordCounts();
+    console.log('[Reframe] classifyAndAttach done — sentiment:',cls.sentiment,'category:',cls.category,'entry.reframe:',entry.reframe);
     if(!entry.reframe)maybeShowReframe(entry,cls);
   }catch(e){
     console.warn('Auto-classify failed for entry',entry.id,e);
