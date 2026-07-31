@@ -145,6 +145,16 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
   background:var(--card-bg);color:var(--text2);transition:all .2s}
 .mood-chip:active{transform:scale(.95)}
 .mood-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(107,125,184,.08)}
+/* Wind-Down entry card */
+.wd-entry{display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:4px;
+  background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);
+  cursor:pointer;transition:border-color .2s}
+.wd-entry:hover{border-color:rgba(107,125,184,.15)}
+.wd-entry:active{transform:scale(.98)}
+.wd-entry-icon{font-size:24px;flex-shrink:0;opacity:.8}
+.wd-entry-title{font-size:13px;font-weight:600}
+.wd-entry-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.wd-entry-arrow{font-size:14px;color:var(--text3);flex-shrink:0}
 
 /* ══════════════════════════════ RECORD PAGE ══════════════════════════════ */
 .dump-list{display:flex;flex-direction:column;gap:6px}
@@ -359,6 +369,14 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
       <div class="mood-chip" onclick="selectMood(this,'😴 好攰')">😴 好攰</div>
       <div class="mood-chip" onclick="selectMood(this,'😊 開心')">😊 開心</div>
     </div>
+  </div>
+  <div class="wd-entry" onclick="navigate('wind-down')">
+    <div class="wd-entry-icon">🌙</div>
+    <div>
+      <div class="wd-entry-title">隨時開始 Wind-Down</div>
+      <div class="wd-entry-sub">放鬆練習、呼吸訓練、白噪音</div>
+    </div>
+    <div class="wd-entry-arrow">→</div>
   </div>
 </div>
 
