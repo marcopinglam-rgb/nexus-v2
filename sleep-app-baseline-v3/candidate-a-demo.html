@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Slumber — Candidate A: Interactive Demo</title>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://huggingface.co">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://huggingface.co" crossorigin>
 <script type="module">
   import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/+esm';
   window.transformersPipeline = pipeline;
@@ -158,6 +162,13 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .empty-state .es-icon{font-size:32px;margin-bottom:8px;opacity:.4}
 .record-section-title{font-size:11px;color:var(--text3);text-transform:uppercase;
   letter-spacing:2px;margin:16px 0 8px;padding-left:4px}
+.dr-cat{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.cat-task{background:rgba(107,125,184,.15);color:#8a9fd4}
+.cat-worry{background:rgba(255,140,100,.12);color:#ffa888}
+.cat-idea{background:rgba(100,200,160,.12);color:#80d4b8}
+.cat-vent{background:rgba(200,140,200,.12);color:#d0a0d0}
+.cat-other{background:var(--card-border);color:var(--text3)}
+.dr-mood{font-size:10px;color:var(--text3);margin-left:6px}
 
 /* ══════════════════════════════ SLEEP PAGE ══════════════════════════════ */
 .v-timeline{display:flex;flex-direction:column;gap:0;padding:4px 0}
@@ -547,16 +558,27 @@ var composing=false,hasContent=false,recording=false,breathing=false;
 var breathTimer=null,breathPhase=0;
 var currentStep=1;
 var heroState={wake:false,sleep:false};
-var STORAGE_KEY='slumber_entries_v1',REVIEW_KEY='slumber_last_review',REVIEW_HISTORY_KEY='slumber_review_history';
+var STORAGE_KEY='slumber_entries_v2',REVIEW_KEY='slumber_last_review',REVIEW_HISTORY_KEY='slumber_review_history';
 var entries=[];
 var sentimentPipeline=null,sentimentLoading=false;
+var zeroShotPipeline=null,zeroShotLoading=false,zeroShotPreloaded=false;
+var USE_UNIFIED_MODEL=true;
+var ZS_LABELS=['正面情緒','中性情緒','負面情緒','今日任務','未解決煩惱','隨手靈感','情緒宣洩'];
+var SENTIMENT_LABELS=ZS_LABELS.slice(0,3);
+var CATEGORY_LABELS=ZS_LABELS.slice(3,7);
 window._lastMood=null;
 
 /* ════════════════════════ LOCAL STORAGE ════════════════════════ */
 function saveEntries(){localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));}
 function loadEntries(){
   var raw=localStorage.getItem(STORAGE_KEY);
-  if(raw){try{entries=JSON.parse(raw);}catch(e){entries=[];}}
+  if(!raw){
+    // Migrate from v1
+    var oldRaw=localStorage.getItem('slumber_entries_v1');
+    if(oldRaw){try{entries=JSON.parse(oldRaw);entries.forEach(function(e){if(!e.hasOwnProperty('category')){e.category=null;}if(!e.hasOwnProperty('sentimentLabel')){e.sentimentLabel=null;}});saveEntries();}catch(e){entries=[];}}
+  }else{
+    try{entries=JSON.parse(raw);entries.forEach(function(e){if(!e.hasOwnProperty('category')){e.category=null;}if(!e.hasOwnProperty('sentimentLabel')){e.sentimentLabel=null;}});}catch(e){entries=[];}
+  }
   return entries;
 }
 function clearAllEntries(){entries=[];localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(REVIEW_KEY);renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();}
@@ -565,10 +587,10 @@ function seedPlaceholders(){
   if(entries.length>0)return;
   var now=new Date();
   entries=[
-    {id:1,type:'dump',icon:'💭',text:'聽日個 presentation 仲有幾頁未整完',time:'22:45',date:fmtDate(now,-1),mood:'😰 緊張'},
-    {id:2,type:'dump',icon:'💭',text:'今日同同事傾偈諗到個新方向',time:'21:30',date:fmtDate(now,-2),mood:'😊 開心'},
-    {id:3,type:'checkpoint',icon:'🌙',text:'準備入睡 · 感覺：有啲攰但仲有少少精神',time:'23:30',date:fmtDate(now,-1),mood:null},
-    {id:4,type:'checkpoint',icon:'☀️',text:'起身 · 感覺：OK，瞓得幾好',time:'07:15',date:fmtDate(now,0),mood:null},
+    {id:1,type:'dump',icon:'💭',text:'聽日個 presentation 仲有幾頁未整完',time:'22:45',date:fmtDate(now,-1),mood:'😰 緊張',category:'今日任務',sentimentLabel:'負面情緒'},
+    {id:2,type:'dump',icon:'💭',text:'今日同同事傾偈諗到個新方向',time:'21:30',date:fmtDate(now,-2),mood:'😊 開心',category:'隨手靈感',sentimentLabel:'正面情緒'},
+    {id:3,type:'checkpoint',icon:'🌙',text:'準備入睡 · 感覺：有啲攰但仲有少少精神',time:'23:30',date:fmtDate(now,-1),mood:null,category:null},
+    {id:4,type:'checkpoint',icon:'☀️',text:'起身 · 感覺：OK，瞓得幾好',time:'07:15',date:fmtDate(now,0),mood:null,category:null},
   ];
   saveEntries();
 }
@@ -649,14 +671,16 @@ function stopVoice(){
   document.getElementById('voiceLabel').textContent='語音';
 }
 
-function addDumpEntry(txt){
+async function addDumpEntry(txt){
   var now=new Date();
   var dateStr=now.toISOString().slice(0,10);
   var timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   var mood=window._lastMood||null;window._lastMood=null;
-  var entry={id:Date.now(),type:'dump',icon:'💭',text:txt,time:timeStr,date:dateStr,mood:mood};
+  var entry={id:Date.now(),type:'dump',icon:'💭',text:txt,time:timeStr,date:dateStr,mood:mood,category:null,sentimentLabel:null};
   entries.unshift(entry);saveEntries();
   renderDumpEntries();
+  // Async classify — don't block UI
+  if(USE_UNIFIED_MODEL){classifyAndAttach(entry);}
   hasContent=true;
   document.getElementById('barText').textContent=txt;
   document.getElementById('barHint').style.display='none';
@@ -701,6 +725,10 @@ function updateRecordCounts(){
   var recNav=document.querySelector('.nav-item[data-page="brain-dump"]');
   if(recNav){if(dumps.length>0)recNav.classList.add('has-badge');else recNav.classList.remove('has-badge');}
 }
+function categoryCSSClass(cat){
+  var map={'今日任務':'task','未解決煩惱':'worry','隨手靈感':'idea','情緒宣洩':'vent'};
+  return map[cat]||'other';
+}
 function renderDumpEntries(){
   var c=document.getElementById('dumpDisplay');c.innerHTML='';
   var dumps=entries.filter(function(e){return e.type==='dump';});
@@ -708,7 +736,9 @@ function renderDumpEntries(){
   dumps.forEach(function(e){
     var el=document.createElement('div');el.className='dump-row';
     el.setAttribute('ontouchstart','swipeStart(event,this)');el.setAttribute('ontouchend','swipeEnd(event,this)');
-    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+'</div><div class="dr-time">'+e.date+' '+e.time+'</div></div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;dump&apos;)">刪除</div>';
+    var catBadge=e.category?'<span class="dr-cat cat-'+categoryCSSClass(e.category)+'">#'+e.category+'</span>':'';
+    var moodTag=e.mood?'<span class="dr-mood">'+e.mood+'</span>':'';
+    el.innerHTML='<div class="dr-icon">'+e.icon+'</div><div class="dr-text"><div>'+e.text+' '+catBadge+'</div><div class="dr-time">'+e.date+' '+e.time+moodTag+'</div></div><div class="dr-delete" onclick="deleteEntryById('+e.id+',&apos;dump&apos;)">刪除</div>';
     c.appendChild(el);
   });updateRecordCounts();
 }
@@ -920,6 +950,28 @@ function updateSentimentProgress(msg,pct){
   bar.querySelector('.sp-fill').style.width=safePct+'%';
   if(safePct>=100)setTimeout(function(){bar.style.display='none';},600);
 }
+/* ═══════ Unified Zero-Shot Pipeline (mDeBERTa) ═══════ */
+async function getZeroShotPipeline(){
+  if(zeroShotPipeline)return zeroShotPipeline;
+  if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
+  zeroShotLoading=true;
+  updateSentimentProgress('🧠 AI 引擎啟動中…',10);
+  updateBrandedLoading();
+  try{
+    var pipe=await window.transformersPipeline('zero-shot-classification','Xenova/mDeBERTa-v3-base-xnli',{progress_callback:function(p){if(p.status==='progress'){var pct=Math.round(10+p.progress*70);updateSentimentProgress('正在載入 AI 引擎…',pct);updateBrandedLoading();}}});
+    zeroShotPipeline=pipe;zeroShotPreloaded=true;
+    updateSentimentProgress('✅ AI 引擎就緒',100);
+    updateBrandedLoading();
+    return pipe;
+  }catch(e){zeroShotLoading=false;throw e;}
+}
+function updateBrandedLoading(){
+  var body=document.getElementById('srBody');if(!body)return;
+  if(zeroShotPreloaded){renderSentimentBlock();return;}
+  if(zeroShotLoading){
+    body.innerHTML='<div style=\"text-align:center;padding:8px 0\"><div style=\"font-size:28px;margin-bottom:8px\">🧠</div><div style=\"font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px\">AI 引擎啟動中</div><div style=\"font-size:11px;color:var(--text3);line-height:1.6\">完全 on-device · 唔連 server<br>零資料外洩 · 真正私隱</div></div>';
+  }
+}
 async function getSentimentPipeline(){
   if(sentimentPipeline)return sentimentPipeline;
   if(sentimentLoading){return new Promise(function(r){var c=setInterval(function(){if(sentimentPipeline){clearInterval(c);r(sentimentPipeline);}},200);});}
@@ -929,15 +981,52 @@ async function getSentimentPipeline(){
     sentimentPipeline=pipe;updateSentimentProgress('模型初始化完成',100);return pipe;
   }catch(e){sentimentLoading=false;throw e;}
 }
-async function analyzeSentiment(){
+/* ═══════ Zero-Shot Classification Helpers ═══════ */
+async function classifyEntry(text){
+  var pipe=await getZeroShotPipeline();
+  var result=await pipe(text,ZS_LABELS,{multi_label:true});
+  // result: {labels:[...], scores:[...]}
+  var bestSentiment=SENTIMENT_LABELS.reduce(function(best,label){
+    var idx=result.labels.indexOf(label);
+    var score=idx>=0?result.scores[idx]:0;
+    return score>best.score?{label:label,score:score}:best;
+  },{label:'中性情緒',score:0});
+  var bestCategory=CATEGORY_LABELS.reduce(function(best,label){
+    var idx=result.labels.indexOf(label);
+    var score=idx>=0?result.scores[idx]:0;
+    return score>best.score?{label:label,score:score}:best;
+  },{label:'隨手靈感',score:0});
+  return {
+    allLabels:result.labels,
+    allScores:result.scores,
+    sentiment:bestSentiment.label,
+    sentimentScore:bestSentiment.score,
+    category:bestCategory.label,
+    categoryScore:bestCategory.score
+  };
+}
+async function classifyAndAttach(entry){
+  if(entry.type!=='dump')return;
+  try{
+    var cls=await classifyEntry(entry.text);
+    entry.category=cls.category;
+    entry.sentimentLabel=cls.sentiment;
+    saveEntries();
+    renderDumpEntries();
+    updateRecordCounts();
+  }catch(e){
+    console.warn('Auto-classify failed for entry',entry.id,e);
+  }
+}
+async function legacyAnalyzeSentiment(){
   var dumps=entries.filter(function(e){return e.type==='dump'&&e.text;});
   if(dumps.length===0)return null;
   var pipe=await getSentimentPipeline();updateSentimentProgress('正在分析情緒…',85);
   var results=[];
   for(var i=0;i<dumps.length;i++){var e=dumps[i];var o=await pipe(e.text);results.push({entry:e,label:o[0].label,score:o[0].score});}
-  updateSentimentProgress('分析完成',100);return buildSentimentReport(results);
+  updateSentimentProgress('分析完成',100);return buildLegacySentimentReport(results);
 }
-function buildSentimentReport(results){
+function buildLegacySentimentReport(results){
   var counts={positive:0,neutral:0,negative:0};
   var daily={};
   results.forEach(function(r){
@@ -952,6 +1041,54 @@ function buildSentimentReport(results){
     dailyBreakdown:Object.keys(daily).sort().map(function(d){return{date:d,counts:daily[d],entryCount:daily[d].entries.length};})
   };
 }
+async function analyzeSentiment(){
+  if(USE_UNIFIED_MODEL){
+    return await unifiedAnalyzeSentiment();
+  }
+  return await legacyAnalyzeSentiment();
+}
+async function unifiedAnalyzeSentiment(){
+  var dumps=entries.filter(function(e){return e.type==='dump'&&e.text;});
+  if(dumps.length===0)return null;
+  updateSentimentProgress('正在 AI 分析情緒與分類…',85);
+  var results=[];
+  for(var i=0;i<dumps.length;i++){
+    var e=dumps[i];
+    var cls=await classifyEntry(e.text);
+    results.push({entry:e,label:cls.sentiment,score:cls.sentimentScore,category:cls.category,categoryScore:cls.categoryScore});
+    e.sentimentLabel=cls.sentiment;
+    e.category=cls.category;
+  }
+  saveEntries();
+  updateSentimentProgress('分析完成',100);
+  return buildUnifiedSentimentReport(results);
+}
+function buildUnifiedSentimentReport(results){
+  var LABEL_MAP={'正面情緒':'positive','中性情緒':'neutral','負面情緒':'negative'};
+  var counts={positive:0,neutral:0,negative:0};
+  var catCounts={'今日任務':0,'未解決煩惱':0,'隨手靈感':0,'情緒宣洩':0};
+  var daily={};
+  results.forEach(function(r){
+    var key=LABEL_MAP[r.label]||'neutral';counts[key]++;
+    if(r.category)catCounts[r.category]=(catCounts[r.category]||0)+1;
+    var d=r.entry.date;if(!daily[d])daily[d]={positive:0,neutral:0,negative:0,entries:[],moods:[]};
+    daily[d][key]++;daily[d].entries.push(r.entry);if(r.entry.mood)daily[d].moods.push(r.entry.mood);
+  });
+  var total=results.length;
+  return {
+    total:total,positivePct:Math.round(counts.positive/total*100),neutralPct:Math.round(counts.neutral/total*100),negativePct:Math.round(counts.negative/total*100),
+    dominant:counts.positive>=counts.negative?'positive':'negative',
+    categoryCounts:catCounts,
+    dailyBreakdown:Object.keys(daily).sort().map(function(d){return{date:d,counts:daily[d],entryCount:daily[d].entries.length};})
+  };
+}
+function buildSentimentReport(results){
+  // compatibility wrapper — delegates to correct builder based on result shape
+  if(results.length>0&&results[0].category!==undefined){
+    return buildUnifiedSentimentReport(results);
+  }
+  return buildLegacySentimentReport(results);
+}
 async function triggerSentimentReview(){
   var dumps=entries.filter(function(e){return e.type==='dump';});
   if(dumps.length===0){toast('仲未有任何記錄','secondary');return;}
@@ -962,7 +1099,7 @@ async function triggerSentimentReview(){
     if(!report){if(res)res.style.display='none';toast('分析失敗，請再試一次');return;}
     var counts={positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)};
     var dailyMap=report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{});
-    report.narrative=generateNarrative(counts,dailyMap,dumps.map(function(){return{label:report.dominant};}));
+    report.narrative=generateNarrative(counts,dailyMap,USE_UNIFIED_MODEL?dumps.map(function(e){return{label:e.sentimentLabel||'中性情緒'};}):dumps.map(function(){return{label:report.dominant};}));
     showInlineResult(report);
     var today=new Date().toISOString().slice(0,10);localStorage.setItem(REVIEW_KEY,today);
     var fingerprint=JSON.stringify(dumps.map(function(e){return e.text+e.date;}).sort())+'|'+dumps.length;
@@ -971,7 +1108,7 @@ async function triggerSentimentReview(){
       report.fingerprint=fingerprint;saveReviewToHistory(report);
     }
     renderSentimentBlock();
-  }catch(e){if(res)res.style.display='none';toast('載入失敗：'+e.message);sentimentLoading=false;}
+  }catch(e){if(res)res.style.display='none';toast('載入失敗：'+e.message);sentimentLoading=false;zeroShotLoading=false;}
 }
 function showInlineResult(report){
   var posW=report.positivePct,neuW=report.neutralPct,negW=report.negativePct;
@@ -992,7 +1129,7 @@ function generateNarrative(counts,daily,results){
   var total=counts.positive+counts.neutral+counts.negative;
   var posPct=Math.round(counts.positive/total*100);
   var dates=Object.keys(daily).sort();
-  var stressDays=0;results.forEach(function(r){if(r.label.toLowerCase()==='negative')stressDays++;});
+  var stressDays=0;results.forEach(function(r){var l=r.label.toLowerCase();if(l==='negative'||l==='負面情緒')stressDays++;});
   var narrative='';
   if(dates.length===1){
     narrative='今日你記錄咗 '+total+' 個想法，整體感覺'+(posPct>=60?'幾好，繼續保持呢份平靜 🌙':'有啲起伏，不過每個晚上都係新開始 💛')+'。';
@@ -1075,7 +1212,7 @@ function seedTestData(days){
   clearAllEntries();
   var texts=[{t:'今日做晒所有嘢，心情好輕鬆',m:'😌 放鬆'},{t:'聽日個會壓力好大，瞓唔著',m:'😰 緊張'},{t:'同朋友食飯好開心',m:'😊 開心'},{t:'OT 到好晏，好攰',m:'😴 好攰'},{t:'同事又冇交功課，好煩',m:'😤 煩躁'},{t:'今日效率好高，滿意',m:'😌 放鬆'},{t:'周末可以唞下，感恩',m:'😊 開心'}];
   var now=new Date();
-  for(var i=0;i<days;i++){var d=new Date(now);d.setDate(d.getDate()-(days-1-i));var ds=d.toISOString().slice(0,10);var t=texts[i%texts.length];entries.push({id:Date.now()+i*10,type:'dump',icon:'💭',text:t.t,time:'22:45',date:ds,mood:t.m});entries.push({id:Date.now()+i*10+1,type:'checkpoint',icon:'🌙',text:'準備入睡',time:'23:30',date:ds,mood:null});}
+  for(var i=0;i<days;i++){var d=new Date(now);d.setDate(d.getDate()-(days-1-i));var ds=d.toISOString().slice(0,10);var t=texts[i%texts.length];entries.push({id:Date.now()+i*10,type:'dump',icon:'💭',text:t.t,time:'22:45',date:ds,mood:t.m,category:null,sentimentLabel:null});entries.push({id:Date.now()+i*10+1,type:'checkpoint',icon:'🌙',text:'準備入睡',time:'23:30',date:ds,mood:null,category:null});}
   saveEntries();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
   toast('🧪 已生成 '+days+' 日測試數據');
 }
@@ -1083,6 +1220,8 @@ window.seedTestData=seedTestData;window.clearAllEntries=clearAllEntries;
 
 /* ════════════════════════ INIT ════════════════════════ */
 loadEntries();seedPlaceholders();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
+/* Background preload: start zero-shot model download immediately */
+if(USE_UNIFIED_MODEL){setTimeout(function(){getZeroShotPipeline().catch(function(e){console.warn('Zero-shot preload failed:',e);});},100);}
 </script>
 </body>
 </html>
