@@ -951,12 +951,12 @@ function updateSentimentProgress(msg,pct){
   if(safePct>=100)setTimeout(function(){bar.style.display='none';},600);
 }
 /* ═══════ Unified Zero-Shot Pipeline (mDeBERTa) ═══════ */
-var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…';
+var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false;
 async function getZeroShotPipeline(){
   if(zeroShotPipeline)return zeroShotPipeline;
   if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
   zeroShotLoading=true;
-  _zsLoadPct=5;_zsLoadMsg='🧠 AI 引擎啟動中…';renderBrandedLoading();
+  _zsLoadPct=5;_zsLoadMsg='🧠 AI 引擎啟動中…';_zsBrandedBuilt=false;renderBrandedLoading();
   try{
     var pipe=await window.transformersPipeline('zero-shot-classification','Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7',{
       progress_callback:function(p){
@@ -978,7 +978,7 @@ async function getZeroShotPipeline(){
       }
     });
     zeroShotPipeline=pipe;zeroShotPreloaded=true;
-    _zsLoadPct=100;_zsLoadMsg='';renderBrandedLoading();
+    _zsLoadPct=100;_zsLoadMsg='';_zsBrandedBuilt=false;renderBrandedLoading();
     return pipe;
   }catch(e){zeroShotLoading=false;throw e;}
 }
@@ -986,16 +986,22 @@ function renderBrandedLoading(){
   var body=document.getElementById('srBody');if(!body)return;
   if(zeroShotPreloaded){renderSentimentBlock();return;}
   if(zeroShotLoading){
-    var pct=_zsLoadPct;
-    body.innerHTML='<div style="text-align:center;padding:12px 0">'+
-      '<div style="font-size:32px;margin-bottom:8px">🧠</div>'+
-      '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:6px">AI 引擎啟動中</div>'+
-      '<div style="width:100%;height:6px;background:var(--card-border);border-radius:3px;overflow:hidden;margin:12px 0">'+
-        '<div style="height:100%;background:var(--accent);border-radius:3px;width:'+pct+'%;transition:width .3s"></div>'+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--text2);margin-top:4px">'+_zsLoadMsg+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.5">完全 on-device · 唔連 server<br>零資料外洩 · 真正私隱</div>'+
-    '</div>';
+    if(!_zsBrandedBuilt){
+      // First paint: build full structure once
+      _zsBrandedBuilt=true;
+      body.innerHTML='<div id="zsBrandedWrap" style="text-align:center;padding:12px 0">'+
+        '<div style="font-size:32px;margin-bottom:8px">🧠</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:6px">AI 引擎啟動中</div>'+
+        '<div style="width:100%;height:6px;background:var(--card-border);border-radius:3px;overflow:hidden;margin:12px 0">'+
+          '<div id="zsBarFill" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .3s"></div>'+
+        '</div>'+
+        '<div id="zsBarMsg" style="font-size:11px;color:var(--text2);margin-top:4px"></div>'+
+        '<div style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.5">完全 on-device · 唔連 server<br>零資料外洩 · 真正私隱</div>'+
+      '</div>';
+    }
+    // Atomic DOM updates — no flicker
+    var fill=document.getElementById('zsBarFill');if(fill)fill.style.width=_zsLoadPct+'%';
+    var msg=document.getElementById('zsBarMsg');if(msg)msg.textContent=_zsLoadMsg;
   }
 }
 async function getSentimentPipeline(){
