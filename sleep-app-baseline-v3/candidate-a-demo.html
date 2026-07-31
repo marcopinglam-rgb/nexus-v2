@@ -958,7 +958,7 @@ async function getZeroShotPipeline(){
   zeroShotLoading=true;
   _zsLoadPct=5;_zsLoadMsg='🧠 AI 引擎啟動中…';renderBrandedLoading();
   try{
-    var pipe=await window.transformersPipeline('zero-shot-classification','Xenova/mDeBERTa-v3-base-xnli',{
+    var pipe=await window.transformersPipeline('zero-shot-classification','Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7',{
       progress_callback:function(p){
         console.log('[ZS] progress callback:',JSON.stringify(p));
         // Normalise: handle various callback shapes from Transformers.js v3
