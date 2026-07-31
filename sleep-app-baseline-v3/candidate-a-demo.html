@@ -955,12 +955,11 @@ function buildSentimentReport(results){
 async function triggerSentimentReview(){
   var dumps=entries.filter(function(e){return e.type==='dump';});
   if(dumps.length===0){toast('仲未有任何記錄','secondary');return;}
-  // Show loading inline
-  var body=document.getElementById('srBody');if(body)body.innerHTML='<div style="text-align:center;padding:12px;color:var(--text2)">⏳ 正在分析你嘅情緒變化…</div>';
-  var res=document.getElementById('srResult');if(res){res.style.display='none';res.innerHTML='';}
+  // Show loading in srResult — DON'T touch srBody to avoid layout jump
+  var res=document.getElementById('srResult');if(res){res.style.display='block';res.innerHTML='<div style="text-align:center;padding:12px;color:var(--text2)">⏳ 正在分析你嘅情緒變化…</div>';}
   try{
     var report=await analyzeSentiment();
-    if(!report){toast('分析失敗，請再試一次');renderSentimentBlock();return;}
+    if(!report){if(res)res.style.display='none';toast('分析失敗，請再試一次');return;}
     var counts={positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)};
     var dailyMap=report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{});
     report.narrative=generateNarrative(counts,dailyMap,dumps.map(function(){return{label:report.dominant};}));
@@ -972,7 +971,7 @@ async function triggerSentimentReview(){
       report.fingerprint=fingerprint;saveReviewToHistory(report);
     }
     renderSentimentBlock();
-  }catch(e){toast('載入失敗：'+e.message);sentimentLoading=false;renderSentimentBlock();}
+  }catch(e){if(res)res.style.display='none';toast('載入失敗：'+e.message);sentimentLoading=false;}
 }
 function showInlineResult(report){
   var posW=report.positivePct,neuW=report.neutralPct,negW=report.negativePct;
