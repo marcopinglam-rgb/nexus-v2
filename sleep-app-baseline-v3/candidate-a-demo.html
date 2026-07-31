@@ -315,15 +315,15 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .sr-bar-val{font-size:10px;color:var(--text2);min-width:32px}
 
 /* ══════════════════════════════ REFRAME CARD ══════════════════════════════ */
-.reframe-section{margin-top:10px;overflow:hidden;transition:max-height .35s ease,opacity .35s ease}
+.reframe-section{overflow:hidden;transition:max-height .35s ease,opacity .35s ease,margin-top .35s ease}
 .reframe-section.collapsed{max-height:0;opacity:0;margin-top:0}
-.reframe-section.expanded{max-height:200px;opacity:1}
+.reframe-section.expanded{max-height:200px;opacity:1;margin-top:8px}
 .reframe-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);
   background:rgba(107,125,184,.06);border:1px solid rgba(107,125,184,.15);cursor:pointer;
-  font-size:11px;color:var(--accent);transition:all .2s;margin-top:4px}
+  font-size:11px;color:var(--accent);transition:all .2s;margin-top:6px}
 .reframe-badge:hover{background:rgba(107,125,184,.12);border-color:rgba(107,125,184,.25)}
 .reframe-badge:active{transform:scale(.96)}
-.reframe-body{margin-top:10px;padding:14px 16px;background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.1);
+.reframe-body{padding:14px 16px;background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.1);
   border-radius:var(--radius);font-size:13px;line-height:1.7;color:var(--text)}
 .reframe-body .rf-text{margin-bottom:10px}
 .reframe-body .rf-action{font-size:11px;color:var(--accent);display:flex;align-items:flex-start;gap:6px;line-height:1.6}
@@ -908,9 +908,9 @@ function renderDumpEntries(){
     var moodTag=e.mood?'<span class="dr-mood">'+e.mood+'</span>':'';
     var reframeHTML='';
     if(e.reframe&&e.reframe.reframe){
-      reframeHTML='<div class="reframe-section collapsed" id="rf-'+e.id+'">'+
-        '<div class="reframe-badge" onclick="event.stopPropagation();toggleReframe('+e.id+')">💡 試下咁睇…</div>'+
-        '<div class="reframe-body" style="display:none">'+
+      reframeHTML='<div class="reframe-badge" onclick="event.stopPropagation();toggleReframe('+e.id+')">💡 試下咁睇…</div>'+
+        '<div class="reframe-section collapsed" id="rf-'+e.id+'">'+
+        '<div class="reframe-body">'+
         '<div class="rf-text">'+e.reframe.reframe+'</div>'+
         '<div class="rf-action"><span class="rf-icon">🌿</span><span>'+e.reframe.action+'</span></div>'+
         '</div></div>';
@@ -1559,18 +1559,15 @@ classifyAndAttach=async function(entry){
 function toggleReframe(id){
   var section=document.getElementById('rf-'+id);
   if(!section)return;
-  var body=section.querySelector('.reframe-body');
-  var badge=section.querySelector('.reframe-badge');
+  var badge=section.previousElementSibling;
   if(section.classList.contains('collapsed')){
     section.classList.remove('collapsed');
     section.classList.add('expanded');
-    if(body)body.style.display='block';
-    if(badge)badge.textContent='💡 收返';
+    if(badge&&badge.classList.contains('reframe-badge'))badge.textContent='💡 收返';
   }else{
     section.classList.remove('expanded');
     section.classList.add('collapsed');
-    if(body)body.style.display='none';
-    if(badge)badge.textContent='💡 試下咁睇…';
+    if(badge&&badge.classList.contains('reframe-badge'))badge.textContent='💡 試下咁睇…';
   }
 }
 
