@@ -556,7 +556,7 @@ function loadEntries(){
   if(raw){try{entries=JSON.parse(raw);}catch(e){entries=[];}}
   return entries;
 }
-function clearAllEntries(){entries=[];localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(REVIEW_KEY);}
+function clearAllEntries(){entries=[];localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(REVIEW_KEY);renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();}
 function fmtDate(base,offset){var d=new Date(base);d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10);}
 function seedPlaceholders(){
   if(entries.length>0)return;
