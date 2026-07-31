@@ -903,9 +903,10 @@ function renderSentimentBlock(){
 }
 function updateSentimentProgress(msg,pct){
   var bar=document.getElementById('sentimentProgress');if(!bar)return;
+  var safePct=Math.max(0,Math.min(100,Math.round(pct)));
   bar.style.display='block';bar.querySelector('.sp-text').textContent=msg;
-  bar.querySelector('.sp-fill').style.width=pct+'%';
-  if(pct>=100)setTimeout(function(){bar.style.display='none';},600);
+  bar.querySelector('.sp-fill').style.width=safePct+'%';
+  if(safePct>=100)setTimeout(function(){bar.style.display='none';},600);
 }
 async function getSentimentPipeline(){
   if(sentimentPipeline)return sentimentPipeline;
@@ -936,19 +937,8 @@ function buildSentimentReport(results){
   return {
     total:total,positivePct:Math.round(counts.positive/total*100),neutralPct:Math.round(counts.neutral/total*100),negativePct:Math.round(counts.negative/total*100),
     dominant:counts.positive>=counts.negative?'positive':'negative',
-    dailyBreakdown:Object.keys(daily).sort().map(function(d){return{date:d,counts:daily[d],entryCount:daily[d].entries.length};}),
-    insights:generateInsights(counts,daily)
+    dailyBreakdown:Object.keys(daily).sort().map(function(d){return{date:d,counts:daily[d],entryCount:daily[d].entries.length};})
   };
-}
-function generateInsights(counts,daily){
-  var insights=[],total=counts.positive+counts.neutral+counts.negative;
-  var posPct=Math.round(counts.positive/total*100);
-  if(posPct>=60)insights.push('整體情緒偏正面，你嘅心態幾好 👍');
-  else if(counts.negative>counts.positive)insights.push('最近負面情緒較多，記得睡前做呼吸練習放鬆 🧘');
-  var dates=Object.keys(daily).sort();
-  if(dates.length>=3)insights.push('你嘅雜念多數圍繞日常事務，嘗試睡前寫低一件感恩嘅事 💛');
-  if(counts.negative>=3)insights.push('發現有幾日壓力較大，考慮早 30 分鐘開始 wind-down 流程 🌙');
-  return insights;
 }
 async function triggerSentimentReview(){
   var dumps=entries.filter(function(e){return e.type==='dump';});
@@ -956,9 +946,9 @@ async function triggerSentimentReview(){
   showCustomModal('<div style="text-align:center;padding:24px"><div style="font-size:32px;margin-bottom:12px">⏳</div><div style="font-size:14px;font-weight:600;margin-bottom:8px">正在分析你嘅情緒變化…</div><div id="modalProgress" style="font-size:12px;color:var(--text2)">準備中…</div></div>');
   var origUpdate=updateSentimentProgress;
   updateSentimentProgress=function(msg,pct){
-    var el=document.getElementById('modalProgress');if(el)el.textContent=msg+' ('+pct+'%)';
+    var el=document.getElementById('modalProgress');if(el)el.textContent=msg+' ('+Math.round(pct)+'%)';
     var bar=document.getElementById('sentimentProgress');
-    if(bar){bar.style.display='block';bar.querySelector('.sp-fill').style.width=pct+'%';}
+    if(bar){bar.style.display='block';var sp=Math.max(0,Math.min(100,Math.round(pct)));bar.querySelector('.sp-fill').style.width=sp+'%';}
   };
   try{
     var report=await analyzeSentiment();
@@ -969,20 +959,55 @@ async function triggerSentimentReview(){
   }catch(e){closeModalDirect();toast('載入失敗：'+e.message);sentimentLoading=false;}
   updateSentimentProgress=origUpdate;
 }
+function generateNarrative(counts,daily,results){
+  var total=counts.positive+counts.neutral+counts.negative;
+  var posPct=Math.round(counts.positive/total*100);
+  var dates=Object.keys(daily).sort();
+  var dominantEmoji=counts.positive>=counts.negative?'😊':'😟';
+  // Count days with stress-related entries
+  var stressDays=0;results.forEach(function(r){if(r.label.toLowerCase()==='negative')stressDays++;});
+  // Build flowing narrative
+  var narrative='';
+  if(dates.length===1){
+    narrative='今日你記錄咗 '+total+' 個想法，整體感覺'+(posPct>=60?'幾好，繼續保持呢份平靜 🌙':'有啲起伏，不過每個晚上都係新開始 💛')+'。';
+  }else{
+    narrative='過去 '+dates.length+' 日你總共記錄咗 '+total+' 個想法。';
+    if(posPct>=60){
+      narrative+='大部分時間你嘅情緒都偏向放鬆，睇得出你開始掌握到自己嘅節奏。';
+    }else if(counts.negative>counts.positive){
+      narrative+='呢排你可能面對較多壓力，但留意到你仍然堅持每晚寫低雜念 —— 呢個習慣本身就係一種自我照顧 🌱。';
+    }else{
+      narrative+='情緒有高有低，好正常。你喺忙碌之中仍然為自己留低記錄嘅空間，呢點好重要。';
+    }
+    if(stressDays>=3){
+      narrative+=' 其中有 '+stressDays+' 晚提到壓力相關嘅事，但感覺你每次寫完之後都有釋放，聽落你已經開始搵到自己嘅節奏。';
+    }
+    if(dates.length>=5){
+      narrative+=' 連續記錄嘅習慣本身就係一種進步 —— 你比自己想像中更有韌性 💪。';
+    }
+  }
+  return narrative;
+}
 function showSentimentResult(report){
-  var posW=report.positivePct,neuW=report.neutralPct,negW=report.negativePct;
-  var dailyRows=report.dailyBreakdown.map(function(d){
-    var emoji=d.counts.positive>=d.counts.negative?'😊':'😟';
-    return '<div style="display:flex;gap:8px;padding:6px 0;font-size:11px;border-bottom:1px solid var(--card-border)"><span style="color:var(--text3);min-width:48px">'+d.date.slice(5)+'</span><span>'+emoji+'</span><span style="flex:1;color:var(--text2)">'+d.entryCount+' 條記錄</span></div>';
-  }).join('');
-  var html='<div style="text-align:center;padding:4px 0 16px"><div style="font-size:28px;margin-bottom:4px">🧠</div><div style="font-size:16px;font-weight:700">AI 情緒回顧</div><div style="font-size:12px;color:var(--text2);margin-top:4px">'+(report.dominant==='positive'?'整體趨勢：😊 正面為主':'整體趨勢：😟 負面較多')+' ('+report.total+' 條記錄)</div></div>';
-  html+='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📊 情緒分佈</div>';
-  html+='<div class="sr-bar-row"><span class="sr-bar-label">😊</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+posW+'%;background:#6b7db8"></div></div><span class="sr-bar-val">'+posW+'%</span></div>';
-  html+='<div class="sr-bar-row"><span class="sr-bar-label">😐</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+neuW+'%;background:#8890a8"></div></div><span class="sr-bar-val">'+neuW+'%</span></div>';
-  html+='<div class="sr-bar-row"><span class="sr-bar-label">😟</span><div class="sr-bar-track"><div class="sr-bar-fill" style="width:'+negW+'%;background:#885068"></div></div><span class="sr-bar-val">'+negW+'%</span></div></div>';
-  if(report.insights.length>0){html+='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">💡 AI 洞察</div>'+report.insights.map(function(i){return'<div style="font-size:12px;color:var(--text2);padding:4px 0;line-height:1.5">'+i+'</div>';}).join('')+'</div>';}
-  html+='<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">📅 每日摘要</div>'+dailyRows+'</div>';
-  html+='<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
+  var narrative=generateNarrative(
+    {positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)},
+    report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{}),
+    report.dailyBreakdown.flatMap(function(d){return d.counts.entries.map(function(){return{label:report.dominant};});})
+  );
+  // Rebuild with full results
+  var dumps=entries.filter(function(e){return e.type==='dump';});
+  var dates=new Set(dumps.map(function(e){return e.date;}));
+  var stressCount=0;
+  var html='<div style="text-align:center;padding:8px 0 20px">'+
+    '<div style="font-size:32px;margin-bottom:8px">🧠</div>'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:4px">情緒回顧</div>'+
+    '<div style="font-size:11px;color:var(--text3)">'+dates.size+' 日 · '+dumps.length+' 個想法</div>'+
+    '</div>'+
+    '<div style="background:rgba(107,125,184,.04);border:1px solid rgba(107,125,184,.08);border-radius:var(--radius);padding:18px 16px;margin-bottom:16px;font-size:14px;line-height:1.8;color:var(--text2)">'+
+    narrative+
+    '</div>'+
+    '<div style="text-align:center;font-size:12px;color:var(--text3);margin-bottom:16px">每晚寫低雜念，就係送俾自己最好嘅禮物 🌙</div>'+
+    '<div class="modal-cancel" onclick="closeModalDirect()">關閉</div>';
   showCustomModal(html);
 }
 function checkAutoReview(){
