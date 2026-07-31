@@ -920,6 +920,8 @@ function toast(msg,type){
 /* ════════════════════════ SENTIMENT REVIEW ════════════════════════ */
 function renderSentimentBlock(){
   var body=document.getElementById('srBody');if(!body)return;
+  // During model loading, delegate to branded loading to prevent flash/element-destroy
+  if(zeroShotLoading&&!zeroShotPreloaded){renderBrandedLoading();return;}
   var dumps=entries.filter(function(e){return e.type==='dump';});
   var distinctDates=new Set(dumps.map(function(e){return e.date;})).size;
   var lastReview=localStorage.getItem(REVIEW_KEY);
@@ -986,7 +988,7 @@ function renderBrandedLoading(){
   var body=document.getElementById('srBody');if(!body)return;
   if(zeroShotPreloaded){renderSentimentBlock();return;}
   if(zeroShotLoading){
-    if(!_zsBrandedBuilt){
+    if(!_zsBrandedBuilt||!document.getElementById('zsBarFill')){
       // First paint: build full structure once
       _zsBrandedBuilt=true;
       body.innerHTML='<div id="zsBrandedWrap" style="text-align:center;padding:12px 0">'+
