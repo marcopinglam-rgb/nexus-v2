@@ -958,6 +958,8 @@ var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false,_
 async function getZeroShotPipeline(){
   if(zeroShotPipeline)return zeroShotPipeline;
   if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
+  // Safety: wait for CDN module if not yet loaded
+  if(!window.transformersPipeline){await new Promise(function(r){var c=setInterval(function(){if(window.transformersPipeline){clearInterval(c);r();}},200);});}
   zeroShotLoading=true;
   _zsLoadPct=5;_zsLoadMsg='🧠 AI 引擎啟動中…';_zsBrandedBuilt=false;renderBrandedLoading();
   try{
