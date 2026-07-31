@@ -962,9 +962,20 @@ async function triggerSentimentReview(){
   try{
     var report=await analyzeSentiment();
     if(!report){closeModalDirect();toast('分析失敗，請再試一次');return;}
+    // Attach narrative before saving to history
+    var dumps=entries.filter(function(e){return e.type==='dump';});
+    var counts={positive:Math.round(report.positivePct/100*report.total),neutral:Math.round(report.neutralPct/100*report.total),negative:Math.round(report.negativePct/100*report.total)};
+    var dailyMap=report.dailyBreakdown.reduce(function(acc,d){acc[d.date]=d.counts;return acc;},{});
+    report.narrative=generateNarrative(counts,dailyMap,dumps.map(function(){return{label:report.dominant};}));
     showSentimentResult(report);
     var today=new Date().toISOString().slice(0,10);localStorage.setItem(REVIEW_KEY,today);
-    saveReviewToHistory(report);
+    // Duplicate check: only save if dump data changed since last review
+    var fingerprint=JSON.stringify(dumps.map(function(e){return e.text+e.date;}).sort())+'|'+dumps.length;
+    var history=loadReviewHistory();
+    if(history.length===0||history[0].fingerprint!==fingerprint){
+      report.fingerprint=fingerprint;
+      saveReviewToHistory(report);
+    }
     renderSentimentBlock();
   }catch(e){closeModalDirect();toast('載入失敗：'+e.message);sentimentLoading=false;}
   updateSentimentProgress=origUpdate;
