@@ -3,32 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>slumber — 睡眠健康 App</title>
+<meta name="theme-color" content="#0a0e18">
+<title>Nexus — 卸下思緒</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0e18;color:#e0e4ee;font-family:'Segoe UI',system-ui,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh}
-main{text-align:center;padding:32px}
+main{text-align:center;padding:32px;max-width:440px}
 h1{font-size:24px;font-weight:700;margin-bottom:8px}
 h1 span{color:#6b7db8}
-p{color:#8890a8;font-size:14px;margin-bottom:24px}
+p{color:#8890a8;font-size:14px;margin-bottom:24px;line-height:1.6}
 a{display:inline-block;padding:14px 32px;border-radius:24px;font-size:15px;font-weight:600;text-decoration:none;
   background:rgba(107,125,184,.18);color:#6b7db8;border:1.5px solid rgba(107,125,184,.3);margin:6px;transition:all .15s}
 a:hover{background:rgba(107,125,184,.28)}
 a.primary{background:rgba(107,125,184,.25);color:#e0e4ee;border-color:rgba(107,125,184,.4)}
+button{display:none;margin-top:8px;padding:12px 22px;border-radius:22px;font-size:14px;font-weight:600;cursor:pointer;
+  border:1px solid rgba(107,125,184,.35);background:rgba(107,125,184,.16);color:#c5d0ea;font-family:inherit}
+button.visible{display:inline-flex}
 .links{margin-top:8px}
 .files{font-size:11px;color:#485068;margin-top:24px}
 </style>
 </head>
 <body>
 <main>
-  <h1>slumber<span>.</span></h1>
-  <p>卸下思緒重量 · 找回入眠本能</p>
+  <h1>nexus<span>.</span></h1>
+  <p>卸下思緒重量。用 Chrome 打開個 app，就可以加到 Android 主畫面。離線都寫得低。</p>
   <div class="links">
-    <a class="primary" href="candidate-a-demo.html">▶ 互動 Demo</a>
+    <a class="primary" href="sleep-companion-demo01.html">開啟 Nexus</a>
+    <button type="button" id="installBtn" onclick="promptInstall()">加到主畫面</button>
+  </div>
+  <div class="links">
     <a href="candidate-a-memo-first.html">Candidate A</a>
     <a href="candidate-b-reflection-first.html">Candidate B</a>
   </div>
   <div class="files">nexus-v2 · sleep-app-baseline-v3</div>
 </main>
+<script>
+var deferredInstall=null;
+function syncInstallButton(){
+  var btn=document.getElementById('installBtn');
+  if(!btn)return;
+  var standalone=window.matchMedia('(display-mode: standalone)').matches;
+  if(standalone||!deferredInstall)btn.classList.remove('visible');
+  else btn.classList.add('visible');
+}
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredInstall=e;
+  syncInstallButton();
+});
+window.addEventListener('appinstalled',function(){
+  deferredInstall=null;
+  syncInstallButton();
+});
+function promptInstall(){
+  if(!deferredInstall)return;
+  var ev=deferredInstall;
+  ev.prompt();
+  ev.userChoice.finally(function(){
+    deferredInstall=null;
+    syncInstallButton();
+  });
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(function(err){console.warn('SW',err);});
+}
+</script>
 </body>
 </html>
