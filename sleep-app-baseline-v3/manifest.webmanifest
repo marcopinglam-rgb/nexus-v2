@@ -1,0 +1,39 @@
+{
+  "id": "./sleep-companion-demo01.html",
+  "name": "Nexus — 卸下思緒",
+  "short_name": "Nexus",
+  "description": "睡前把腦內雜念寫低，再用一句本機重構放低。唔係白噪音，亦唔使上網。",
+  "lang": "zh-HK",
+  "start_url": "./sleep-companion-demo01.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e18",
+  "theme_color": "#0a0e18",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -2,17 +2,15 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>Nexus - Your AI Sleep Companion</title>
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<link rel="dns-prefetch" href="https://huggingface.co">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://huggingface.co" crossorigin>
-<script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/+esm';
-  window.transformersPipeline = pipeline;
-  window._tfReady = true;
-</script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Nexus — 卸下思緒</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <style>
 :root {
   --bg:#0a0e18;--bg2:#101420;--text:#e0e4ee;--text2:#8890a8;
@@ -105,7 +103,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
   justify-content:center;flex-direction:column}
 .page#onboarding.active{display:flex}
 .page#onboarding.active~.topbar{display:flex;background:transparent;border:none}
-.page#onboarding.active~.topbar .logo,.page#onboarding.active~.topbar .clock{opacity:0}
+.page#onboarding.active~.topbar .logo,.page#onboarding.active~.topbar .clock,.page#onboarding.active~.topbar .install-btn{opacity:0;pointer-events:none}
 .page#onboarding.active~.bottomnav,.page#onboarding.active~.overlay-bar{display:none}
 .ob-kicker{font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--text3);margin-bottom:20px}
 .ob-title{font-size:28px;font-weight:700;line-height:1.35;margin-bottom:14px}
@@ -333,6 +331,26 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .page::-webkit-scrollbar{width:3px}
 .page::-webkit-scrollbar-track{background:transparent}
 .page::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:3px}
+
+/* Phone-width and installed standalone: the frame is the app, not a museum bezel */
+@media (max-width: 520px), (display-mode: standalone) {
+  html,body{height:100%;overflow:hidden;background:#0a0e18}
+  body{display:block}
+  body::before{display:none}
+  .phone{width:100%;height:100%;height:100dvh;border-radius:0;box-shadow:none}
+}
+@media (display-mode: standalone) {
+  .topbar{height:calc(var(--topbar-h) + env(safe-area-inset-top));padding-top:env(safe-area-inset-top)}
+  .page{top:calc(var(--topbar-h) + env(safe-area-inset-top));bottom:calc(var(--nav-h) + var(--bar-h) + env(safe-area-inset-bottom))}
+  .page#onboarding{top:0;bottom:0}
+  .toast-container{top:calc(var(--topbar-h) + env(safe-area-inset-top))}
+  .bottomnav{height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+  .overlay-bar{bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
+}
+.install-btn{display:none;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border-radius:18px;
+  border:1px solid rgba(107,125,184,.35);background:rgba(107,125,184,.16);color:#c5d0ea;font-size:12px;font-weight:600;
+  font-family:var(--font);cursor:pointer}
+.install-btn.visible{display:inline-flex}
 </style>
 </head>
 <body>
@@ -400,7 +418,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
   <!-- Sentiment Review Block -->
   <div class="sentiment-review" id="sentimentReview">
     <div class="sr-card">
-      <div class="sr-header"><span class="sr-icon">🧠</span><span class="sr-title">AI 情緒回顧</span></div>
+      <div class="sr-header"><span class="sr-icon">🧠</span><span class="sr-title">本機卸載</span></div>
       <div class="sr-body" id="srBody"></div>
       <div class="sr-result" id="srResult" style="display:none"></div>
       <div class="sr-progress" id="sentimentProgress" style="display:none">
@@ -527,6 +545,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 <!-- ════════════════════════ TOP BAR ════════════════════════ -->
 <div class="topbar">
   <div class="logo">nexus<span>.</span></div>
+  <button type="button" class="install-btn" id="installBtn" onclick="promptInstall()">加到主畫面</button>
   <div class="clock" id="liveClock">23:45</div>
 </div>
 
@@ -596,7 +615,7 @@ var STORAGE_KEY='slumber_entries_v2',REVIEW_KEY='slumber_last_review',REVIEW_HIS
 var entries=[];
 var sentimentPipeline=null,sentimentLoading=false;
 var zeroShotPipeline=null,zeroShotLoading=false,zeroShotPreloaded=false;
-var USE_UNIFIED_MODEL=true;
+var USE_UNIFIED_MODEL=false;
 var ZS_LABELS=['正面情緒','中性情緒','負面情緒','今日任務','未解決煩惱','隨手靈感','情緒宣洩'];
 var SENTIMENT_LABELS=ZS_LABELS.slice(0,3);
 var CATEGORY_LABELS=ZS_LABELS.slice(3,7);
@@ -789,7 +808,10 @@ function navigate(id){
   },current?120:0);
 }
 
-function finishOnboard(){navigate('dashboard');}
+function finishOnboard(){
+  try{localStorage.setItem('nexus_onboarded','1');}catch(e){}
+  navigate('dashboard');
+}
 
 /* ════════════════════════ COMPOSER BAR ════════════════════════ */
 function toggleBar(){
@@ -847,8 +869,7 @@ async function addDumpEntry(txt){
   var entry={id:Date.now(),type:'dump',icon:'💭',text:txt,time:timeStr,date:dateStr,mood:mood,category:null,sentimentLabel:null};
   entries.unshift(entry);saveEntries();
   renderDumpEntries();
-  // Async classify — don't block UI
-  if(USE_UNIFIED_MODEL){classifyAndAttach(entry);}
+  attachKeywordReframe(entry);
   hasContent=true;
   document.getElementById('barText').textContent=txt;
   document.getElementById('barHint').style.display='none';
@@ -1112,9 +1133,9 @@ function renderSentimentBlock(){
     var timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
     html+='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">📝 上次生成：今日 '+timeStr+'</div>';
   }
-  html+='<div style="color:var(--text2)">透過 AI 分析你嘅情緒變化模式</div>';
+  html+='<div style="color:var(--text2)">每條雜念會喺本機配一句放低嘅講法，唔使上網。</div>';
   html+='<div style="display:flex;gap:8px;margin-top:10px">';
-  html+='<div class="sr-btn" onclick="triggerSentimentReview()">🧠 生成回顧</div>';
+  html+='<div class="sr-btn" onclick="triggerSentimentReview()">本機卸載</div>';
   html+='<div class="sr-btn" onclick="showPastReviews()" style="background:rgba(107,125,184,.04);border-color:rgba(107,125,184,.1);color:var(--text2)">📋 歷史回顧</div>';
   html+='</div>';
   if(distinctDates>=7&&lastReview!==today){
@@ -1146,6 +1167,7 @@ function updateSentimentProgress(msg,pct){
 var _zsLoadPct=0,_zsLoadMsg='🧠 AI 引擎啟動中…',_zsBrandedBuilt=false,_zsRafPending=false;
 var _zsFirstPaintTime=0,_zsMinDisplayTimer=null;
 async function getZeroShotPipeline(){
+  if(!window.transformersPipeline) throw new Error('local-only');
   if(zeroShotPipeline)return zeroShotPipeline;
   if(zeroShotLoading){return new Promise(function(r){var c=setInterval(function(){if(zeroShotPipeline){clearInterval(c);r(zeroShotPipeline);}},200);});}
   // Safety: wait for CDN module if not yet loaded
@@ -1329,6 +1351,8 @@ function buildSentimentReport(results){
   return buildLegacySentimentReport(results);
 }
 async function triggerSentimentReview(){
+  toast('卸載喺每條雜念下面，今次安裝唔會載入模型','secondary');
+  return;
   var dumps=entries.filter(function(e){return e.type==='dump';});
   if(dumps.length===0){toast('仲未有任何記錄','secondary');return;}
   // Show loading in srResult — DON'T touch srBody to avoid layout jump
@@ -1552,6 +1576,16 @@ function composeReframe(entry,cls){
   };
 }
 
+/* On-device unload: keyword theme → template. No model. */
+function attachKeywordReframe(entry){
+  if(!entry||entry.reframe)return;
+  var reframe=composeReframe(entry,null);
+  if(!reframe)return;
+  entry.reframe=reframe;
+  saveEntries();
+  renderDumpEntries();
+}
+
 /* ── Called after async classify to attach reframe ── */
 function maybeShowReframe(entry,cls){
   if(!entry||!cls||entry.reframe){console.log('[Reframe] maybeShowReframe SKIP — entry:',!!entry,'cls:',!!cls,'already has reframe:',!!entry.reframe);return;}
@@ -1629,12 +1663,43 @@ window.seedTestData=seedTestData;window.clearAllEntries=clearAllEntries;
 
 /* ════════════════════════ INIT ════════════════════════ */
 loadEntries();seedPlaceholders();renderDumpEntries();renderCheckpointEntries();renderSentimentBlock();updateRecordCounts();
-/* Background preload: wait for CDN module, then start zero-shot model download */
-if(USE_UNIFIED_MODEL){
-  var _tfPoll=setInterval(function(){
-    if(window._tfReady){clearInterval(_tfPoll);getZeroShotPipeline().catch(function(e){console.warn('Zero-shot preload failed:',e);});}
-  },100);
+if(localStorage.getItem('nexus_onboarded')==='1'){
+  var ob=document.getElementById('onboarding');
+  if(ob)ob.classList.remove('active');
+  var dash=document.getElementById('dashboard');
+  if(dash&&!dash.classList.contains('active'))dash.classList.add('active');
 }
+
+var deferredInstall=null;
+function syncInstallButton(){
+  var btn=document.getElementById('installBtn');
+  if(!btn)return;
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  if(standalone||!deferredInstall)btn.classList.remove('visible');
+  else btn.classList.add('visible');
+}
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredInstall=e;
+  syncInstallButton();
+});
+window.addEventListener('appinstalled',function(){
+  deferredInstall=null;
+  syncInstallButton();
+});
+function promptInstall(){
+  if(!deferredInstall)return;
+  var ev=deferredInstall;
+  ev.prompt();
+  ev.userChoice.finally(function(){
+    deferredInstall=null;
+    syncInstallButton();
+  });
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(function(err){console.warn('SW',err);});
+}
+syncInstallButton();
 </script>
 </body>
 </html>

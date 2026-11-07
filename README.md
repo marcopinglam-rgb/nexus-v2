@@ -3,7 +3,7 @@
 > 解決失眠成因：腦內雜念卸載、認知重構，而非單純追蹤睡眠數據
 
 ## Live Demo
-`sleep-app-baseline-v3/candidate-a-demo.html` — 完整互動版本
+`sleep-app-baseline-v3/sleep-companion-demo01.html` — 可安裝 Android PWA（本機 brain dump + reframe）
 
 ## 結構
 ```
